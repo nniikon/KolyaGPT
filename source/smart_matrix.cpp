@@ -1,6 +1,7 @@
 #include "../include/smart_matrix.h"
 
 #include <assert.h>
+#include <iostream>
 
 SmartMatrix::SmartMatrix(std::size_t n_rows, std::size_t n_cols)
     : values_(nullptr), grads_(nullptr),
@@ -206,7 +207,7 @@ void SmartMatrix::EvalGradRecursive_() {
 
                     for (std::size_t l = 0; l < L; l++) {
                         float local_grad = sibling_->GetValue(l, m);
-                        float parent_grad = parent_->GetValue(n, m);
+                        float parent_grad = parent_->GetGrad(n, m);
                         AddGrad(n, l, local_grad * parent_grad);
                     }
                 }
@@ -226,7 +227,7 @@ void SmartMatrix::EvalGradRecursive_() {
 
                     for (std::size_t l = 0; l < L; l++) {
                         float local_grad = sibling_->GetValue(n, l);
-                        float parent_grad = parent_->GetValue(n, m);
+                        float parent_grad = parent_->GetGrad(n, m);
                         AddGrad(l, m, local_grad * parent_grad);
                     }
                 }
