@@ -2,6 +2,9 @@
 
 #include <assert.h>
 #include <iostream>
+#include <cmath>
+#include <random>
+#include <chrono>
 
 SmartMatrix::SmartMatrix(std::size_t n_rows, std::size_t n_cols)
     : values_(nullptr), grads_(nullptr),
@@ -39,6 +42,21 @@ float SmartMatrix::GetGrad(std::size_t row, std::size_t col) const {
 
 std::size_t SmartMatrix::GetRows() const { return n_rows_; }
 std::size_t SmartMatrix::GetCols() const { return n_cols_; }
+
+
+void SmartMatrix::SetMatrixNormRand() {
+    // https://en.cppreference.com/w/cpp/numeric/random/normal_distribution
+    std::random_device rd;
+    std::mt19937 gen(rd());
+
+    const float mean = 0.0f;
+    const float dispersion = 1.0f;
+    std::normal_distribution<float> dis(mean, dispersion);
+
+    for (std::size_t i = 0; i < n_elems_; i++) {
+        values_[i] = dis(gen);
+    }
+}
 
 
 void SmartMatrix::SetMatrixValue(float value) {
@@ -97,7 +115,15 @@ void SmartMatrix::SetBinaryFamily(SmartMatrix* first, SmartMatrix* second,
 }
 
 
-void SmartMatrix::Sum(SmartMatrix* first, SmartMatrix* second) {
+void SmartMatrix::SetUnaryFamily(SmartMatrix* first, OperationType type) {
+    first ->parent_ = this;
+    first ->parent_oper_ = type;
+    child1_ = first;
+    child2_ = nullptr;
+}
+
+
+void SmartMatrix::Add(SmartMatrix* first, SmartMatrix* second) {
     // FIXME: throw if matrices are differently sized
 
     assert(n_rows_ == first->GetRows() && n_rows_ == second->GetRows());
@@ -107,7 +133,21 @@ void SmartMatrix::Sum(SmartMatrix* first, SmartMatrix* second) {
         values_[i] = first->values_[i] + second->values_[i];
     }
 
-    SetBinaryFamily(first, second, OperationType::Sum);
+    SetBinaryFamily(first, second, OperationType::Add);
+}
+
+
+void SmartMatrix::Sub(SmartMatrix* first, SmartMatrix* second) {
+    // FIXME: throw if matrices are differently sized
+
+    assert(n_rows_ == first->GetRows() && n_rows_ == second->GetRows());
+    assert(n_cols_ == first->GetCols() && n_cols_ == second->GetCols());
+
+    for (std::size_t i = 0; i < n_elems_; i++) {
+        values_[i] = first->values_[i] - second->values_[i];
+    }
+
+    SetBinaryFamily(first, second, OperationType::LSub, OperationType::RSub);
 }
 
 
@@ -135,6 +175,19 @@ void SmartMatrix::Mul(SmartMatrix* first, SmartMatrix* second) {
     }
 
     SetBinaryFamily(first, second, OperationType::LMul, OperationType::RMul);
+}
+
+
+void SmartMatrix::Sigm(SmartMatrix* first) {
+    // FIXME: throw if matrices are differently sized
+    assert(n_rows_ == first->GetRows());
+    assert(n_cols_ == first->GetCols());
+
+    for (std::size_t i = 0; i < n_elems_; i++) {
+        values_[i] = 1 / (1 + expf(-first->values_[i]));
+    }
+
+    SetUnaryFamily(first, OperationType::Sigm);
 }
 
 
@@ -184,9 +237,17 @@ void SmartMatrix::EvalGrad() {
 void SmartMatrix::EvalGradRecursive_() {
     assert(parent_ != nullptr);
 
-    float localSigm = 0.0f;
     switch(parent_oper_) {
-        case OperationType::Sum:
+        case OperationType::RSub: 
+        {
+            for (std::size_t i = 0; i < n_elems_; i++) {
+                grads_[i] = -parent_->grads_[i];
+            }
+
+            break;
+        }
+        case OperationType::LSub:
+        case OperationType::Add:
         {
             for (std::size_t i = 0; i < n_elems_; i++) {
                 grads_[i] = parent_->grads_[i];
@@ -234,6 +295,15 @@ void SmartMatrix::EvalGradRecursive_() {
             }
             break;
         }
+
+        case OperationType::Sigm:
+        {
+            for (std::size_t i = 0; i < n_elems_; i++) {
+                float local_grad = parent_->values_[i] * (parent_->values_[i] - 1);
+                grads_[i] = parent_->grads_[i] * local_grad;
+            }
+        }
+
         case OperationType::None:
         default:
             assert(0);
@@ -273,9 +343,12 @@ void SmartMatrix::DumpRecursive_(bool isSibling, std::ofstream& out) const {
         const char* op_str = nullptr;
 
         switch(parent_oper_) {
-            case OperationType::Sum:    op_str = "+";       break;
+            case OperationType::Add:    op_str = "+";       break;
             case OperationType::RMul:
             case OperationType::LMul:   op_str = "*";       break;
+            case OperationType::RSub:
+            case OperationType::LSub:   op_str = "-";       break;
+            case OperationType::Sigm:   op_str = "sigm";    break;
 
             case OperationType::None:
             default:
