@@ -123,6 +123,24 @@ void SmartMatrix::SetUnaryFamily(SmartMatrix* first, OperationType type) {
 }
 
 
+void SmartMatrix::Loss(SmartMatrix* src, SmartMatrix* ref) {
+    // FIXME: throw if matrices are differently sized
+
+    assert(src->GetRows() == ref->GetRows());
+    assert(src->GetCols() == ref->GetCols());
+    assert(n_elems_ == 1);
+
+    float loss = 0.0f;
+    for (std::size_t i = 0; i < n_elems_; i++) {
+        float diff = src->values_[i] - ref->values_[i];
+        loss += diff * diff;
+    }
+    values_[0] = loss;
+
+    SetBinaryFamily(src, ref, OperationType::LossSrc, OperationType::LossRef);
+}
+
+
 void SmartMatrix::Add(SmartMatrix* first, SmartMatrix* second) {
     // FIXME: throw if matrices are differently sized
 
@@ -226,6 +244,20 @@ void SmartMatrix::DumpMatrix_(std::ofstream& out) const {
 }
 
 
+void SmartMatrix::AdjustValues(float step) {
+    for (std::size_t i = 0; i < n_elems_; i++) {
+        values_[i] += step * grads_[i];
+    }
+}
+
+
+void SmartMatrix::ResetGrad() {
+    for (std::size_t i = 0; i < n_elems_; i++) {
+        grads_[i] = 0.0f;
+    }
+}
+
+
 void SmartMatrix::EvalGrad() {
     SetMatrixGrad(1.0f); // dx/dx is 1 by definition
 
@@ -302,7 +334,20 @@ void SmartMatrix::EvalGradRecursive_() {
                 float local_grad = parent_->values_[i] * (parent_->values_[i] - 1);
                 grads_[i] = parent_->grads_[i] * local_grad;
             }
+            break;
         }
+
+        case OperationType::LossSrc:
+        {
+            for (std::size_t i = 0; i < n_elems_; i++) {
+                float local_grad = 2 * (values_[i] - sibling_->values_[i]);
+                grads_[i] = parent_->grads_[0] * local_grad;
+            }
+            break;
+        }
+
+        case OperationType::LossRef:
+        { /* Not needed */ break; }
 
         case OperationType::None:
         default:
@@ -343,12 +388,14 @@ void SmartMatrix::DumpRecursive_(bool isSibling, std::ofstream& out) const {
         const char* op_str = nullptr;
 
         switch(parent_oper_) {
-            case OperationType::Add:    op_str = "+";       break;
+            case OperationType::Add:        op_str = "+";       break;
             case OperationType::RMul:
-            case OperationType::LMul:   op_str = "*";       break;
+            case OperationType::LMul:       op_str = "*";       break;
             case OperationType::RSub:
-            case OperationType::LSub:   op_str = "-";       break;
-            case OperationType::Sigm:   op_str = "sigm";    break;
+            case OperationType::LSub:       op_str = "-";       break;
+            case OperationType::Sigm:       op_str = "sigm";    break;
+            case OperationType::LossSrc:
+            case OperationType::LossRef:    op_str = "loss";    break;
 
             case OperationType::None:
             default:

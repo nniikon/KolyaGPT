@@ -12,6 +12,7 @@ class SmartMatrix {
         void Add (SmartMatrix* first, SmartMatrix* second);
         void Sub (SmartMatrix* first, SmartMatrix* second);
         void Mul (SmartMatrix* first, SmartMatrix* second);
+        void Loss(SmartMatrix* src,   SmartMatrix* ref);
         void Sigm(SmartMatrix* first);
 
         float GetValue(std::size_t row, std::size_t col) const;
@@ -27,6 +28,8 @@ class SmartMatrix {
         void AddGrad (std::size_t row, std::size_t col, float value);
 
         void EvalGrad();
+        void ResetGrad();
+        void AdjustValues(float step);
 
         void Dump() const;
 
@@ -39,6 +42,8 @@ class SmartMatrix {
             LMul,
             RMul,
             Sigm,
+            LossSrc,
+            LossRef,
         };
 
         float* values_;
