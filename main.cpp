@@ -1,7 +1,15 @@
 #include "include/smart_value.h"
-#include <iostream>
+#include "include/smart_matrix.h"
+
+void TestSmartValue ();
+void TestSmartMatrix();
 
 int main() {
+    TestSmartMatrix();
+}
+
+
+void TestSmartValue() {
     SmartValue x1(0.1f);
     SmartValue x2(0.2f);
     SmartValue w1(0.2f);
@@ -18,5 +26,23 @@ int main() {
     res.EvalGrad();
 
     res.Dump();
-    std::cerr << "success";
+}
+
+void TestSmartMatrix() {
+    SmartMatrix inputs (4, 3);
+    SmartMatrix weights(3, 2);
+    SmartMatrix outputs(4, 2);
+
+    for (std::size_t i = 0; i < 4; i++)
+        for (std::size_t j = 0; j < 3; j++)
+            inputs.SetValue(i, j, 1.0f);
+
+    for (std::size_t i = 0; i < 3; i++)
+        for (std::size_t j = 0; j < 2; j++)
+            weights.SetValue(i, j, 1.0f);
+
+    outputs.Mul(&inputs, &weights);
+    outputs.EvalGrad();
+
+    outputs.Dump();
 }
