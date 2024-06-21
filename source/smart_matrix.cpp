@@ -141,6 +141,24 @@ void SmartMatrix::Loss(SmartMatrix* src, SmartMatrix* ref) {
 }
 
 
+void SmartMatrix::AddVectorToMatrix (SmartMatrix* matrix, SmartMatrix* vector) {
+    assert(n_rows_ == matrix->GetRows());
+    assert(n_cols_ == matrix->GetCols());
+    assert(matrix->GetCols() == vector->GetCols());
+    assert(vector->GetRows() == 1);
+
+    for (std::size_t i = 0; i < n_rows_; i++) {
+        for (std::size_t j = 0; j < n_cols_; j++) {
+            float new_value = matrix->GetValue(i, j) + vector->GetValue(0, j);
+            SetValue(i, j, new_value);
+        }
+    }
+
+    SetBinaryFamily(matrix, vector, OperationType::AddMatrix, OperationType::AddVector);
+}
+
+
+
 void SmartMatrix::Add(SmartMatrix* first, SmartMatrix* second) {
     // FIXME: throw if matrices are differently sized
 
@@ -273,16 +291,17 @@ void SmartMatrix::EvalGradRecursive_() {
         case OperationType::RSub: 
         {
             for (std::size_t i = 0; i < n_elems_; i++) {
-                grads_[i] = -parent_->grads_[i];
+                grads_[i] += -parent_->grads_[i];
             }
 
             break;
         }
+        case OperationType::AddMatrix:
         case OperationType::LSub:
         case OperationType::Add:
         {
             for (std::size_t i = 0; i < n_elems_; i++) {
-                grads_[i] = parent_->grads_[i];
+                grads_[i] += parent_->grads_[i];
             }
 
             break;
@@ -332,7 +351,7 @@ void SmartMatrix::EvalGradRecursive_() {
         {
             for (std::size_t i = 0; i < n_elems_; i++) {
                 float local_grad = parent_->values_[i] * (parent_->values_[i] - 1);
-                grads_[i] = parent_->grads_[i] * local_grad;
+                grads_[i] += parent_->grads_[i] * local_grad;
             }
             break;
         }
@@ -341,9 +360,19 @@ void SmartMatrix::EvalGradRecursive_() {
         {
             for (std::size_t i = 0; i < n_elems_; i++) {
                 float local_grad = 2 * (values_[i] - sibling_->values_[i]);
-                grads_[i] = parent_->grads_[0] * local_grad;
+                grads_[i] += parent_->grads_[0] * local_grad;
             }
             break;
+        }
+
+        case OperationType::AddVector:
+        {
+            // Should probably swap the loops for better performance.
+            for (std::size_t i = 0; i < n_cols_; i++) {
+                for (std::size_t j = 0; j < parent_->n_rows_; j++) {
+                    grads_[i] += parent_->GetGrad(j, i);
+                }
+            }
         }
 
         case OperationType::LossRef:
@@ -388,6 +417,8 @@ void SmartMatrix::DumpRecursive_(bool isSibling, std::ofstream& out) const {
         const char* op_str = nullptr;
 
         switch(parent_oper_) {
+            case OperationType::AddMatrix:
+            case OperationType::AddVector:
             case OperationType::Add:        op_str = "+";       break;
             case OperationType::RMul:
             case OperationType::LMul:       op_str = "*";       break;

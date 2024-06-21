@@ -9,11 +9,12 @@ class SmartMatrix {
     public:
         SmartMatrix(std::size_t n_rows, std::size_t n_cols);
         ~SmartMatrix();
-        void Add (SmartMatrix* first, SmartMatrix* second);
-        void Sub (SmartMatrix* first, SmartMatrix* second);
-        void Mul (SmartMatrix* first, SmartMatrix* second);
-        void Loss(SmartMatrix* src,   SmartMatrix* ref);
-        void Sigm(SmartMatrix* first);
+        void Add               (SmartMatrix* first,  SmartMatrix* second);
+        void AddVectorToMatrix (SmartMatrix* matrix, SmartMatrix* vector);
+        void Sub               (SmartMatrix* first,  SmartMatrix* second);
+        void Mul               (SmartMatrix* first,  SmartMatrix* second);
+        void Loss              (SmartMatrix* src,    SmartMatrix* ref);
+        void Sigm              (SmartMatrix* first);
 
         float GetValue(std::size_t row, std::size_t col) const;
         float GetGrad (std::size_t row, std::size_t col) const;
@@ -37,6 +38,8 @@ class SmartMatrix {
         enum class OperationType {
             None,
             Add,
+            AddMatrix,
+            AddVector,
             LSub,
             RSub,
             LMul,
