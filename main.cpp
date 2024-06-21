@@ -76,9 +76,9 @@ void TestSmartMatrix() {
 
 
 void TestMLP() {
-    const std::size_t kExamples      = 2;
+    const std::size_t kExamples      = 10;
     const std::size_t kInputNeurons  = 4;
-    const std::size_t kMiddleNeurons = 5;
+    const std::size_t kMiddleNeurons = 16;
     const std::size_t kOutputNeurons = 3;
 
     InputLayer   input_layer(kInputNeurons, kExamples);
@@ -97,7 +97,8 @@ void TestMLP() {
     middle_layer.SetNormalRand();
     output_layer.SetNormalRand();
 
-    for (std::size_t i = 0; i < 100'000; i++) {
+    const std::size_t kIterations = 100'000;
+    for (std::size_t i = 0; i < kIterations; i++) {
         input_layer .ResetGrads();
         middle_layer.ResetGrads();
         output_layer.ResetGrads();
@@ -105,15 +106,17 @@ void TestMLP() {
         middle_layer.Eval();
         float loss = output_layer.EvalLoss();
 
-        std::cout << "Iteration " << i << ": loss = " << loss << "\n"; 
+        if (i == 0 || i == kIterations - 1)
+            std::cout << "Iteration " << i << ": loss = " << loss << "\n"; 
 
-        for (size_t l = 0; l < kExamples; l++) {
-            for (size_t j = 0; j < kOutputNeurons; j++) {
-                std::cout << output_layer.GetNormOutput(l, j) << "\tExpected = " << (float)(l+j) / (kExamples + kInputNeurons - 2) << "\n";
+        if (i == kIterations - 1)
+            for (size_t l = 0; l < kExamples; l++) {
+                for (size_t j = 0; j < kOutputNeurons; j++) {
+                    std::cout << output_layer.GetNormOutput(l, j) << "\tExpected = " << (float)(l+j) / (kExamples + kInputNeurons - 2) << "\n";
+                }
             }
-        }
 
-        output_layer.Backpropagate(0.05f);
+        output_layer.Backpropagate(0.01f);
     }
     output_layer.Dump();
     
