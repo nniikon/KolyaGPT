@@ -131,7 +131,7 @@ void SmartMatrix::Loss(SmartMatrix* src, SmartMatrix* ref) {
     assert(n_elems_ == 1);
 
     float loss = 0.0f;
-    for (std::size_t i = 0; i < n_elems_; i++) {
+    for (std::size_t i = 0; i < src->n_elems_; i++) {
         float diff = src->values_[i] - ref->values_[i];
         loss += diff * diff;
     }
