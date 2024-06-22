@@ -1,15 +1,17 @@
 #include "include/smart_value.h"
 #include "include/smart_matrix.h"
 #include "include/MLP.h"
+#include "mnist/mnist_parser/mnist_parser.h"
 
 #include <iostream>
 
 void TestSmartValue ();
 void TestSmartMatrix();
 void TestMLP();
+void TestMnistParser();
 
 int main() {
-    TestMLP();
+    TestMnistParser();
 }
 
 
@@ -120,4 +122,18 @@ void TestMLP() {
     }
     output_layer.Dump();
     
+}
+
+
+void TestMnistParser() {
+    MnistParser mnist_parser("mnist/MNIST_data/train-images.idx3-ubyte",
+                             "mnist/MNIST_data/train-labels.idx1-ubyte");
+
+    MnistLabels mnist_labels = mnist_parser.GetMnistLabels();
+    MnistImages mnist_images = mnist_parser.GetMnistImages();
+
+    std::cout << "Images:\n\tn_images = " << mnist_images.n_images << "\n";
+    std::cout << "\tgrid = " << mnist_images.n_cols << " x " << mnist_images.n_rows << "\n\n";
+
+    std::cout << "Labels:\n\tn_labels = " << mnist_labels.n_labels<< "\n";
 }
