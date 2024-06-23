@@ -44,7 +44,7 @@ class MiddleLayer : public Layer {
 
         SmartMatrix* GetOutput() override;
 
-    protected:
+    // protected: uncomment later
         Layer* const input_layer_;
         const std::size_t n_input_rows_;
         const std::size_t n_input_cols_;
@@ -53,6 +53,7 @@ class MiddleLayer : public Layer {
         SmartMatrix weights_;
         SmartMatrix biases_;
         SmartMatrix unbiased_output_;
+        SmartMatrix norm_output_;
 };
 
 class OutputLayer : public MiddleLayer {
@@ -65,12 +66,12 @@ class OutputLayer : public MiddleLayer {
         void ResetGrads();
         float GetNormOutput(std::size_t example, std::size_t output);
 
-        void SetExpectedValue(std::size_t example, std::size_t output, float value);
+        void SetExpectedValue (std::size_t example, std::size_t output, float value);
+        float GetExpectedValue(std::size_t example, std::size_t output);
 
     private:
         SmartMatrix loss_;
         SmartMatrix expected_output_;
-        SmartMatrix norm_output_;
 };
 
 #endif

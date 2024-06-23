@@ -43,9 +43,10 @@ MiddleLayer::MiddleLayer(Layer* input_layer, std::size_t n_outputs)
       n_input_rows_ (input_layer->GetOutputRows()),
       n_input_cols_ (input_layer->GetOutputCols()),
       n_output_cols_(n_outputs),
-      weights_      (n_input_cols_, n_output_cols_),
-      biases_       (1, n_output_cols_),
-      unbiased_output_(n_input_rows_, n_output_cols_) {
+      weights_        (n_input_cols_, n_output_cols_),
+      biases_         (1            , n_output_cols_),
+      unbiased_output_(n_input_rows_, n_output_cols_),
+      norm_output_    (n_input_rows_, n_output_cols_) {
 
     SetNormalRand();
 }
@@ -58,16 +59,18 @@ void MiddleLayer::SetNormalRand() {
 
 
 void MiddleLayer::ResetGrads() {
-    weights_.ResetGrad();
-    biases_.ResetGrad();
+    weights_        .ResetGrad();
+    biases_         .ResetGrad();
     unbiased_output_.ResetGrad();
-    output_.ResetGrad();
+    output_         .ResetGrad();
+    norm_output_    .ResetGrad();
 }
 
 
 void MiddleLayer::Eval() {
     unbiased_output_.Mul(input_layer_->GetOutput(), &weights_);
     output_.AddVectorToMatrix(&unbiased_output_, &biases_);
+    norm_output_.Sigm(&output_);
 }
 
 void MiddleLayer::Backpropagate(float step) {
@@ -75,24 +78,26 @@ void MiddleLayer::Backpropagate(float step) {
     biases_ .AdjustValues(step);
 }
 
-SmartMatrix* MiddleLayer::GetOutput() { return &output_; }
+SmartMatrix* MiddleLayer::GetOutput() { return &norm_output_; }
 
 
 // OutputLayer
 OutputLayer::OutputLayer(Layer* input_layer, std::size_t n_outputs) 
     : MiddleLayer(input_layer, n_outputs),
       loss_(1, 1),
-      expected_output_(output_.GetRows(), output_.GetCols()),
-      norm_output_    (output_.GetRows(), output_.GetCols()){
+      expected_output_(output_.GetRows(), output_.GetCols()) {
 }
 
 void OutputLayer::SetExpectedValue(std::size_t example, std::size_t output, float value) {
     expected_output_.SetValue(example, output, value);
 }
 
+float OutputLayer::GetExpectedValue(std::size_t example, std::size_t output) {
+    return expected_output_.GetValue(example, output);
+}
+
 float OutputLayer::EvalLoss() {
     Eval();
-    norm_output_.Sigm(&output_);
     loss_.Loss(&norm_output_, &expected_output_);
     loss_.EvalGrad();
 
@@ -106,12 +111,12 @@ void OutputLayer::Dump() {
 
 
 void OutputLayer::ResetGrads() {
-    weights_.ResetGrad();
-    biases_.ResetGrad();
+    weights_        .ResetGrad();
+    biases_         .ResetGrad();
     unbiased_output_.ResetGrad();
-    output_.ResetGrad();
-    norm_output_.ResetGrad();
-    loss_.ResetGrad();
+    output_         .ResetGrad();
+    norm_output_    .ResetGrad();
+    loss_           .ResetGrad();
     expected_output_.ResetGrad();
 }
 
