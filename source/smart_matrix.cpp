@@ -22,21 +22,13 @@ SmartMatrix::~SmartMatrix() {
 }
 
 
-float SmartMatrix::GetElem(float* data, std::size_t row, std::size_t col) const {
-    assert(col < n_cols_);
-    assert(row < n_rows_);
-
-    return data[row * n_cols_ + col];
-}
-
-
 float SmartMatrix::GetValue(std::size_t row, std::size_t col) const {
-    return GetElem(values_, row, col);
+    return values_[row * n_cols_ + col];
 }
 
 
 float SmartMatrix::GetGrad(std::size_t row, std::size_t col) const {
-    return GetElem(grads_, row, col);
+    return grads_[row * n_cols_ + col];
 }
 
 
@@ -73,26 +65,18 @@ void SmartMatrix::SetMatrixGrad(float value) {
 }
 
 
-void SmartMatrix::SetElem(float* data, std::size_t row, std::size_t col, float value) {
-    assert(col < n_cols_);
-    assert(row < n_rows_);
-
-    data[row * n_cols_ + col] = value;
-}
-
-
 void SmartMatrix::SetValue(std::size_t row, std::size_t col, float value) {
-    SetElem(values_, row, col, value);
+    values_[row * n_cols_ + col] = value;
 }
 
 
 void SmartMatrix::SetGrad(std::size_t row, std::size_t col, float value) {
-    SetElem(grads_, row, col, value);
+    grads_[row * n_cols_ + col] = value;
 }
 
 
 void SmartMatrix::AddGrad(std::size_t row, std::size_t col, float value) {
-    SetElem(grads_, row, col, value + GetGrad(row, col));
+    grads_[row * n_cols_ + col] += value;
 }
 
 
@@ -264,7 +248,7 @@ void SmartMatrix::DumpMatrix_(std::ofstream& out) const {
 
 void SmartMatrix::AdjustValues(float step) {
     for (std::size_t i = 0; i < n_elems_; i++) {
-        values_[i] += step * grads_[i];
+        values_[i] -= step * grads_[i];
     }
 }
 
@@ -288,96 +272,32 @@ void SmartMatrix::EvalGradRecursive_() {
     assert(parent_ != nullptr);
 
     switch(parent_oper_) {
-        case OperationType::RSub: 
-        {
-            for (std::size_t i = 0; i < n_elems_; i++) {
-                grads_[i] += -parent_->grads_[i];
-            }
-
+        case OperationType::RSub:
+            EvalGradRSub_();
             break;
-        }
         case OperationType::AddMatrix:
         case OperationType::LSub:
         case OperationType::Add:
-        {
-            for (std::size_t i = 0; i < n_elems_; i++) {
-                grads_[i] += parent_->grads_[i];
-            }
-
+            EvalGradAddMatrixLSubAdd_();
             break;
-        }
-
         case OperationType::LMul:
-        {
-            // Local notation: (NxL) * (LxM) = (NxM)
-            std::size_t N = n_rows_;
-            std::size_t M = parent_->GetCols();
-            std::size_t L = n_cols_;
-
-            for (std::size_t n = 0; n < N; n++) {
-                for (std::size_t m = 0; m < M; m++) {
-
-                    for (std::size_t l = 0; l < L; l++) {
-                        float local_grad = sibling_->GetValue(l, m);
-                        float parent_grad = parent_->GetGrad(n, m);
-                        AddGrad(n, l, local_grad * parent_grad);
-                    }
-                }
-            }
+            EvalGradLMul_();
             break;
-        }
-
         case OperationType::RMul:
-        {
-            // Local notation: (NxL) * (LxM) = (NxM)
-            std::size_t N = parent_->GetRows();
-            std::size_t M = n_cols_;
-            std::size_t L = n_rows_;
-
-            for (std::size_t n = 0; n < N; n++) {
-                for (std::size_t m = 0; m < M; m++) {
-
-                    for (std::size_t l = 0; l < L; l++) {
-                        float local_grad = sibling_->GetValue(n, l);
-                        float parent_grad = parent_->GetGrad(n, m);
-                        AddGrad(l, m, local_grad * parent_grad);
-                    }
-                }
-            }
+            EvalGradRMul_();
             break;
-        }
-
         case OperationType::Sigm:
-        {
-            for (std::size_t i = 0; i < n_elems_; i++) {
-                float local_grad = parent_->values_[i] * (parent_->values_[i] - 1);
-                grads_[i] += parent_->grads_[i] * local_grad;
-            }
+            EvalGradSigm_();
             break;
-        }
-
         case OperationType::LossSrc:
-        {
-            for (std::size_t i = 0; i < n_elems_; i++) {
-                float local_grad = 2 * (values_[i] - sibling_->values_[i]);
-                grads_[i] += parent_->grads_[0] * local_grad;
-            }
+            EvalGradLossSrc_();
             break;
-        }
-
         case OperationType::AddVector:
-        {
-            // Should probably swap the loops for better performance.
-            for (std::size_t i = 0; i < n_cols_; i++) {
-                for (std::size_t j = 0; j < parent_->n_rows_; j++) {
-                    grads_[i] += parent_->GetGrad(j, i);
-                }
-            }
-        }
-
+            EvalGradAddVector_();
+            break;
         case OperationType::LossRef:
-        { /* Not needed */ break; }
-
+            // Not needed
+            break;
         case OperationType::None:
         default:
             assert(0);
@@ -385,6 +305,72 @@ void SmartMatrix::EvalGradRecursive_() {
 
     if (child1_) { child1_->EvalGradRecursive_(); }
     if (child2_) { child2_->EvalGradRecursive_(); }
+}
+
+void SmartMatrix::EvalGradRSub_() {
+    for (std::size_t i = 0; i < n_elems_; i++) {
+        grads_[i] += -parent_->grads_[i];
+    }
+}
+
+void SmartMatrix::EvalGradAddMatrixLSubAdd_() {
+    for (std::size_t i = 0; i < n_elems_; i++) {
+        grads_[i] += parent_->grads_[i];
+    }
+}
+
+void SmartMatrix::EvalGradLMul_() {
+    std::size_t N = n_rows_;
+    std::size_t M = parent_->GetCols();
+    std::size_t L = n_cols_;
+
+    for (std::size_t n = 0; n < N; n++) {
+        for (std::size_t m = 0; m < M; m++) {
+            for (std::size_t l = 0; l < L; l++) {
+                float local_grad = sibling_->GetValue(l, m);
+                float parent_grad = parent_->GetGrad(n, m);
+                AddGrad(n, l, local_grad * parent_grad);
+            }
+        }
+    }
+}
+
+void SmartMatrix::EvalGradRMul_() {
+    std::size_t N = parent_->GetRows();
+    std::size_t M = n_cols_;
+    std::size_t L = n_rows_;
+
+    for (std::size_t n = 0; n < N; n++) {
+        for (std::size_t m = 0; m < M; m++) {
+            for (std::size_t l = 0; l < L; l++) {
+                float local_grad = sibling_->GetValue(n, l);
+                float parent_grad = parent_->GetGrad(n, m);
+                AddGrad(l, m, local_grad * parent_grad);
+            }
+        }
+    }
+}
+
+void SmartMatrix::EvalGradSigm_() {
+    for (std::size_t i = 0; i < n_elems_; i++) {
+        float local_grad = parent_->values_[i] * (1 - parent_->values_[i]);
+        grads_[i] += parent_->grads_[i] * local_grad;
+    }
+}
+
+void SmartMatrix::EvalGradLossSrc_() {
+    for (std::size_t i = 0; i < n_elems_; i++) {
+        float local_grad = 2 * (values_[i] - sibling_->values_[i]);
+        grads_[i] += parent_->grads_[0] * local_grad;
+    }
+}
+
+void SmartMatrix::EvalGradAddVector_() {
+    for (std::size_t i = 0; i < n_cols_; i++) {
+        for (std::size_t j = 0; j < parent_->n_rows_; j++) {
+            grads_[i] += parent_->GetGrad(j, i);
+        }
+    }
 }
 
 

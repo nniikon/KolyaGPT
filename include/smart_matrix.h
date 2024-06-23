@@ -66,13 +66,17 @@ class SmartMatrix {
                              OperationType type);
         void SetUnaryFamily(SmartMatrix* first, OperationType type);
 
-        float GetElem(float* data, std::size_t row, std::size_t col) const;
-        void  SetElem(float* data, std::size_t row, std::size_t col, float value);
-
         void DumpMatrix_   (                std::ofstream& out) const;
         void DumpRecursive_(bool isSibling, std::ofstream& out) const;
 
         void EvalGradRecursive_();
+        void EvalGradRSub_();
+        void EvalGradAddMatrixLSubAdd_();
+        void EvalGradLMul_();
+        void EvalGradRMul_();
+        void EvalGradSigm_();
+        void EvalGradLossSrc_();
+        void EvalGradAddVector_();
 };
 
 #endif // SMART_MATRIX_H_
