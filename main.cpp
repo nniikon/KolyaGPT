@@ -4,14 +4,18 @@
 #include "mnist/mnist_parser/mnist_parser.h"
 
 #include <iostream>
+#include <assert.h>
+#include <immintrin.h>
 
 void TestSmartValue ();
 void TestSmartMatrix();
 void TestMLP();
 void TestMnistParser();
 
+void TrainMnist();
+
 int main() {
-    TestMnistParser();
+    TrainMnist();
 }
 
 
@@ -78,14 +82,15 @@ void TestSmartMatrix() {
 
 
 void TestMLP() {
-    const std::size_t kExamples      = 10;
-    const std::size_t kInputNeurons  = 4;
-    const std::size_t kMiddleNeurons = 16;
-    const std::size_t kOutputNeurons = 3;
+    const std::size_t kExamples      = 6000;
+    const std::size_t kInputNeurons  = 28*28;
+    const std::size_t kMiddleNeurons = 12;
+    const std::size_t kOutputNeurons = 10;
 
-    InputLayer   input_layer(kInputNeurons, kExamples);
-    MiddleLayer middle_layer(&input_layer, kMiddleNeurons);
-    OutputLayer output_layer(&middle_layer, kOutputNeurons);
+    InputLayer   input_layer (kInputNeurons,  kExamples);
+    MiddleLayer middle_layer1(&input_layer,   kMiddleNeurons);
+    MiddleLayer middle_layer2(&middle_layer1, kMiddleNeurons);
+    OutputLayer output_layer (&middle_layer2, kOutputNeurons);
 
     for (std::size_t i = 0; i < kExamples; i++) {
         for (std::size_t j = 0; j < kInputNeurons; j++) {
@@ -96,29 +101,34 @@ void TestMLP() {
             output_layer.SetExpectedValue(i, j, (float)(i+j) / (kExamples + kInputNeurons - 2));
         }
     }
-    middle_layer.SetNormalRand();
+    middle_layer1.SetNormalRand();
+    middle_layer2.SetNormalRand();
     output_layer.SetNormalRand();
 
-    const std::size_t kIterations = 100'000;
+    const float kStep = 0.000001f;
+    const std::size_t kIterations = 10000;
     for (std::size_t i = 0; i < kIterations; i++) {
-        input_layer .ResetGrads();
-        middle_layer.ResetGrads();
-        output_layer.ResetGrads();
+        input_layer  .ResetGrads();
+        middle_layer1.ResetGrads();
+        middle_layer2.ResetGrads();
+        output_layer .ResetGrads();
 
-        middle_layer.Eval();
+        middle_layer1.Eval();
+        middle_layer2.Eval();
         float loss = output_layer.EvalLoss();
 
-        if (i == 0 || i == kIterations - 1)
-            std::cout << "Iteration " << i << ": loss = " << loss << "\n"; 
+        std::cout << "Iteration " << i << ": loss = " << loss << "\n"; 
 
-        if (i == kIterations - 1)
-            for (size_t l = 0; l < kExamples; l++) {
-                for (size_t j = 0; j < kOutputNeurons; j++) {
-                    std::cout << output_layer.GetNormOutput(l, j) << "\tExpected = " << (float)(l+j) / (kExamples + kInputNeurons - 2) << "\n";
-                }
-            }
+        //if (i == kIterations - 1 || i == 0)
+        //    for (size_t l = 0; l < kExamples; l++) {
+        //        for (size_t j = 0; j < kOutputNeurons; j++) {
+        //            std::cout << output_layer.GetNormOutput(l, j) << "\tExpected = " << (float)(l+j) / (kExamples + kInputNeurons - 2) << "\n";
+        //        }
+        //    }
 
-        output_layer.Backpropagate(0.01f);
+        middle_layer1.Backpropagate(kStep);
+        middle_layer2.Backpropagate(kStep);
+        output_layer .Backpropagate(kStep);
     }
     output_layer.Dump();
     
@@ -136,4 +146,83 @@ void TestMnistParser() {
     std::cout << "\tgrid = " << mnist_images.n_cols << " x " << mnist_images.n_rows << "\n\n";
 
     std::cout << "Labels:\n\tn_labels = " << mnist_labels.n_labels<< "\n";
+}
+
+
+void TrainMnist() {
+    MnistParser mnist_parser("mnist/MNIST_data/train-images.idx3-ubyte",
+                             "mnist/MNIST_data/train-labels.idx1-ubyte");
+
+    MnistImages mnist_images = mnist_parser.GetMnistImages();
+    MnistLabels mnist_labels = mnist_parser.GetMnistLabels();
+
+    uint8_t* images_buffer = mnist_images.buffer;
+    uint8_t* labels_buffer = mnist_labels.buffer;
+
+    assert(mnist_labels.n_labels == mnist_images.n_images);
+
+    //const std::size_t kExamples      = static_cast<std::size_t>(mnist_labels.n_labels);
+    const std::size_t kExamples      = 10000;
+    const std::size_t kInputNeurons  = mnist_images.n_cols * mnist_images.n_rows;
+    const std::size_t kMiddleNeurons = 12;
+    const std::size_t kOutputNeurons = 10;
+
+    InputLayer   input_layer (kInputNeurons,  kExamples);
+    MiddleLayer middle_layer1(&input_layer,   kMiddleNeurons);
+    MiddleLayer middle_layer2(&middle_layer1, kMiddleNeurons);
+    OutputLayer output_layer (&middle_layer2, kOutputNeurons);
+
+    for (std::size_t example = 0; example < kExamples; example++) {
+        for (std::size_t neuron = 0; neuron < kInputNeurons; neuron++) {
+            input_layer.SetValue(example, neuron, (float)images_buffer[example * kInputNeurons + neuron]/256);
+        }
+
+        output_layer.SetExpectedValue(example, labels_buffer[example], 1.0f);
+    }
+
+    //middle_layer1.SetNormalRand();
+    //middle_layer2.SetNormalRand();
+    //output_layer .SetNormalRand();
+
+    const char* middle_layer1_saveload = "mnist_data/middle1.data";
+    const char* middle_layer2_saveload = "mnist_data/middle2.data";
+    const char*        output_saveload = "mnist_data/output.data";
+
+    middle_layer1.LoadParamsFromFile(middle_layer1_saveload);
+    middle_layer2.LoadParamsFromFile(middle_layer2_saveload);
+    output_layer .LoadParamsFromFile(       output_saveload);
+
+    const float kStep = 2 * 1e-4f;
+    const std::size_t kIterations = 1'000'000;
+    for (std::size_t i = 0; i < kIterations; i++) {
+        input_layer  .ResetGrads();
+        middle_layer1.ResetGrads();
+        middle_layer2.ResetGrads();
+        output_layer .ResetGrads();
+
+        middle_layer1.Eval();
+        middle_layer2.Eval();
+        float loss = output_layer.EvalLoss();
+
+        std::cout << "Iteration " << i << ": loss = " << loss << "\n"; 
+
+        //if (i == kIterations - 1 || i == 0)
+        //    for (size_t l = 0; l < kExamples; l++) {
+        //        for (size_t j = 0; j < kOutputNeurons; j++) {
+        //            std::cout << output_layer.GetNormOutput(l, j) << "\tExpected = " << (float)(l+j) / (kExamples + kInputNeurons - 2) << "\n";
+        //        }
+        //    }
+
+        middle_layer1.Backpropagate(kStep);
+        middle_layer2.Backpropagate(kStep);
+        output_layer .Backpropagate(kStep);
+
+        if (i % 10 == 0) {
+            std::cout << "Saving...\n";
+            middle_layer1.SaveParamsToFile(middle_layer1_saveload);
+            middle_layer2.SaveParamsToFile(middle_layer2_saveload);
+            output_layer .SaveParamsToFile(       output_saveload);
+        }
+    }
+
 }
