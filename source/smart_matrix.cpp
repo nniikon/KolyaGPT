@@ -36,6 +36,15 @@ std::size_t SmartMatrix::GetRows() const { return n_rows_; }
 std::size_t SmartMatrix::GetCols() const { return n_cols_; }
 
 
+const float* SmartMatrix::GetValues() const { return values_; }
+
+
+void SmartMatrix::SetValues(float* values) {
+    delete[] values_;
+    values_ = values;
+}
+
+
 void SmartMatrix::SetMatrixNormRand() {
     // https://en.cppreference.com/w/cpp/numeric/random/normal_distribution
     std::random_device rd;

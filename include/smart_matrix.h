@@ -28,6 +28,9 @@ class SmartMatrix {
         void SetGrad (std::size_t row, std::size_t col, float value);
         void AddGrad (std::size_t row, std::size_t col, float value);
 
+        const float* GetValues() const;
+        void SetValues(float* values);
+
         void EvalGrad();
         void ResetGrad();
         void AdjustValues(float step);
