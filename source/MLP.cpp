@@ -1,6 +1,7 @@
 #include "../include/MLP.h"
 
 #include <iostream>
+#include <assert.h>
 
 // Layer
 Layer::Layer(std::size_t rows, std::size_t cols) 
@@ -49,6 +50,52 @@ MiddleLayer::MiddleLayer(Layer* input_layer, std::size_t n_outputs)
       norm_output_    (n_input_rows_, n_output_cols_) {
 
     SetNormalRand();
+}
+
+
+void MiddleLayer::SaveParamsToFile(const char* file_name) {
+    assert(file_name);
+
+    const float* weights = weights_.GetValues();
+    const float* biases  = biases_ .GetValues();
+
+    size_t n_weights = weights_.GetRows() * weights_.GetCols();
+    size_t n_biases  =  biases_.GetRows() *  biases_.GetCols();
+
+    std::ofstream ofs(file_name, std::ios::binary);
+    assert(ofs);
+
+    ofs.write(reinterpret_cast<const char*>(&n_weights), sizeof(n_weights));
+    ofs.write(reinterpret_cast<const char*>(weights), n_weights * sizeof(float));
+
+    ofs.write(reinterpret_cast<const char*>(&n_biases), sizeof(n_biases));
+    ofs.write(reinterpret_cast<const char*>(biases), n_biases * sizeof(float));
+
+    ofs.close();
+}
+
+
+void MiddleLayer::LoadParamsFromFile(const char* file_name) {
+    assert(file_name);
+
+    std::ifstream ifs(file_name, std::ios::binary);
+    assert(ifs);
+
+    size_t n_weights = 0;
+    size_t n_biases  = 0;
+
+    ifs.read(reinterpret_cast<char*>(&n_weights), sizeof(n_weights));
+    float* weights = new float[n_weights];
+    ifs.read(reinterpret_cast<char*>(weights), n_weights * sizeof(float));
+
+    ifs.read(reinterpret_cast<char*>(&n_biases), sizeof(n_biases));
+    float* biases = new float[n_biases];
+    ifs.read(reinterpret_cast<char*>(biases), n_biases * sizeof(float));
+
+    ifs.close();
+
+    weights_.SetValues(weights);
+    biases_ .SetValues(biases);
 }
 
 

@@ -41,10 +41,12 @@ class MiddleLayer : public Layer {
         void Eval();
         void Backpropagate(float step);
         void ResetGrads();
+        void SaveParamsToFile  (const char* file_name);
+        void LoadParamsFromFile(const char* file_name);
 
         SmartMatrix* GetOutput() override;
 
-    // protected: uncomment later
+    protected:
         Layer* const input_layer_;
         const std::size_t n_input_rows_;
         const std::size_t n_input_cols_;
