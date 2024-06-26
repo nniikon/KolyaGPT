@@ -4,7 +4,6 @@
 #include <iostream>
 #include <cmath>
 #include <random>
-#include <chrono>
 
 SmartMatrix::SmartMatrix(std::size_t n_rows, std::size_t n_cols)
     : values_(nullptr), grads_(nullptr),
