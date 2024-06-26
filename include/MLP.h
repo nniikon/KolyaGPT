@@ -6,12 +6,18 @@
 
 class Layer {
     public:
-        Layer(std::size_t rows, std::size_t cols);
+        Layer(std::size_t rows, std::size_t cols, Layer* input_layer);
         virtual SmartMatrix* GetOutput() = 0;
+        virtual void        ResetGrads() = 0;
         std::size_t          GetOutputRows() const;
         std::size_t          GetOutputCols() const;
 
+        virtual void EvalRecursive()                    = 0;
+        virtual void ResetGradsRecursive()              = 0;
+        virtual void BackpropagateRecursive(float step) = 0;
+
     protected:
+        Layer* const input_layer_;
         SmartMatrix output_;
 };
 
@@ -21,9 +27,13 @@ class InputLayer : public Layer {
 
         void SetValue(std::size_t i, std::size_t j, float value);
 
-        void ResetGrads();
+        void ResetGrads() override;
 
         SmartMatrix* GetOutput() override;
+
+        void EvalRecursive()                    override;
+        void ResetGradsRecursive()              override;
+        void BackpropagateRecursive(float step) override;
 
         std::size_t GetCols() const;
         std::size_t GetRows() const;
@@ -40,14 +50,17 @@ class MiddleLayer : public Layer {
         void SetNormalRand();
         void Eval();
         void Backpropagate(float step);
-        void ResetGrads();
+        void ResetGrads() override;
         void SaveParamsToFile  (const char* file_name);
         void LoadParamsFromFile(const char* file_name);
+
+        void EvalRecursive()                    override;
+        void ResetGradsRecursive()              override;
+        void BackpropagateRecursive(float step) override;
 
         SmartMatrix* GetOutput() override;
 
     protected:
-        Layer* const input_layer_;
         const std::size_t n_input_rows_;
         const std::size_t n_input_cols_;
         const std::size_t n_output_cols_;
@@ -63,13 +76,18 @@ class OutputLayer : public MiddleLayer {
     public:
         OutputLayer(Layer* input_layer, std::size_t n_outputs);
 
+        float GetLoss() const;
         float EvalLoss();
         void Dump();
-        void ResetGrads();
+        void ResetGrads() override;
         float GetNormOutput(std::size_t example, std::size_t output);
 
-        void SetExpectedValue (std::size_t example, std::size_t output, float value);
+        void  SetExpectedValue(std::size_t example, std::size_t output, float value);
         float GetExpectedValue(std::size_t example, std::size_t output);
+
+        void EvalRecursive()                    override;
+        void ResetGradsRecursive()              override;
+        void BackpropagateRecursive(float step) override;
 
     private:
         SmartMatrix loss_;
