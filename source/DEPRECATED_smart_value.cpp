@@ -1,4 +1,4 @@
-#include "../include/smart_value.h"
+#include "../include/DEPRECATED_smart_value.h"
 
 #include <assert.h>
 #include <cmath>
