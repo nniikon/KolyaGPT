@@ -7,6 +7,13 @@
 class Layer {
     public:
         Layer(std::size_t rows, std::size_t cols, Layer* input_layer);
+        virtual ~Layer();
+
+        Layer(const Layer& other);
+        Layer& operator=(const Layer& other);
+        Layer(Layer&& other);
+        Layer& operator=(Layer&& other);
+
         virtual SmartMatrix* GetOutput() = 0;
         virtual void        ResetGrads() = 0;
         std::size_t          GetOutputRows() const;
@@ -17,13 +24,19 @@ class Layer {
         virtual void BackpropagateRecursive(float step) = 0;
 
     protected:
-        Layer* const input_layer_;
+        Layer* input_layer_;
         SmartMatrix output_;
 };
 
 class InputLayer : public Layer {
     public:
         InputLayer(std::size_t n_inputs, std::size_t n_examples = 1);
+        ~InputLayer();
+
+        InputLayer(const InputLayer& other);
+        InputLayer& operator=(const InputLayer& other);
+        InputLayer(InputLayer&& other);
+        InputLayer& operator=(InputLayer&& other);
 
         void SetValue(std::size_t i, std::size_t j, float value);
 
@@ -46,6 +59,12 @@ class InputLayer : public Layer {
 class MiddleLayer : public Layer {
     public:
         MiddleLayer(Layer* input_layer, std::size_t n_outputs);
+        ~MiddleLayer();
+
+        MiddleLayer(const MiddleLayer& other);
+        MiddleLayer& operator=(const MiddleLayer& other);
+        MiddleLayer(MiddleLayer&& other);
+        MiddleLayer& operator=(MiddleLayer&& other);
 
         void SetNormalRand();
         void Eval();
@@ -75,6 +94,12 @@ class OutputLayer : public MiddleLayer {
 
     public:
         OutputLayer(Layer* input_layer, std::size_t n_outputs);
+        ~OutputLayer();
+
+        OutputLayer(const OutputLayer& other);
+        OutputLayer& operator=(const OutputLayer& other);
+        OutputLayer(OutputLayer&& other);
+        OutputLayer& operator=(OutputLayer&& other);
 
         float GetLoss() const;
         float EvalLoss();
