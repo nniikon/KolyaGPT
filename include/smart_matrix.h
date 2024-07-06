@@ -8,7 +8,12 @@ class SmartMatrix {
 
     public:
         SmartMatrix(std::size_t n_rows, std::size_t n_cols);
+        SmartMatrix(const SmartMatrix& other);
+        SmartMatrix(SmartMatrix&& other);
+        SmartMatrix& operator=(const SmartMatrix& other);
+        SmartMatrix& operator=(SmartMatrix&& other);
         ~SmartMatrix();
+
         void Add               (SmartMatrix* first,  SmartMatrix* second);
         void AddVectorToMatrix (SmartMatrix* matrix, SmartMatrix* vector);
         void Sub               (SmartMatrix* first,  SmartMatrix* second);

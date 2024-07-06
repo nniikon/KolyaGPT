@@ -15,9 +15,114 @@ SmartMatrix::SmartMatrix(std::size_t n_rows, std::size_t n_cols)
 }
 
 
+SmartMatrix::SmartMatrix(const SmartMatrix& other)
+    : n_rows_(other.n_rows_),
+      n_cols_(other.n_cols_),
+      n_elems_(other.n_elems_),
+      parent_oper_(other.parent_oper_),
+      sibling_(other.sibling_),
+      parent_(other.parent_),
+      child1_(other.child1_),
+      child2_(other.child2_) {
+
+    values_ = new float[n_elems_];
+    grads_  = new float[n_elems_];
+
+    std::copy(other.values_, other.values_ + n_elems_, values_);
+    std::copy(other.grads_,  other.grads_  + n_elems_, grads_);
+}
+
+
+SmartMatrix::SmartMatrix(SmartMatrix&& other)
+    : values_(other.values_),
+      grads_(other.grads_),
+      n_rows_(other.n_rows_),
+      n_cols_(other.n_cols_),
+      n_elems_(other.n_elems_),
+      parent_oper_(other.parent_oper_),
+      sibling_(other.sibling_),
+      parent_(other.parent_),
+      child1_(other.child1_),
+      child2_(other.child2_) {
+
+    other.values_  = nullptr;
+    other.grads_   = nullptr;
+    other.sibling_ = nullptr;
+    other.parent_  = nullptr;
+    other.child1_  = nullptr;
+    other.child2_  = nullptr;
+}
+
+
+SmartMatrix& SmartMatrix::operator=(const SmartMatrix& other) {
+    if (this == &other) {
+        return *this;
+    }
+
+    assert(n_rows_  == other.n_rows_);
+    assert(n_cols_  == other.n_cols_);
+    assert(n_elems_ == other.n_elems_);
+
+    delete[] values_;
+    delete[] grads_;
+
+    parent_oper_ = other.parent_oper_;
+    sibling_     = other.sibling_;
+    parent_      = other.parent_;
+    child1_      = other.child1_;
+    child2_      = other.child2_;
+
+    values_ = new float[n_elems_];
+    grads_  = new float[n_elems_];
+
+    std::copy(other.values_, other.values_ + n_elems_, values_);
+    std::copy(other.grads_,  other.grads_  + n_elems_, grads_);
+
+    return *this;
+}
+
+
+SmartMatrix& SmartMatrix::operator=(SmartMatrix&& other) {
+    if (this == &other) {
+        return *this;
+    }
+
+    assert(n_rows_  == other.n_rows_);
+    assert(n_cols_  == other.n_cols_);
+    assert(n_elems_ == other.n_elems_);
+
+    delete[] values_;
+    delete[] grads_;
+
+    values_      = other.values_;
+    grads_       = other.grads_;
+    parent_oper_ = other.parent_oper_;
+    sibling_     = other.sibling_;
+    parent_      = other.parent_;
+    child1_      = other.child1_;
+    child2_      = other.child2_;
+
+    other.values_  = nullptr;
+    other.grads_   = nullptr;
+    other.sibling_ = nullptr;
+    other.parent_  = nullptr;
+    other.child1_  = nullptr;
+    other.child2_  = nullptr;
+
+    return *this;
+}
+
+
 SmartMatrix::~SmartMatrix() {
     delete[] values_;
     delete[]  grads_;
+
+    values_  = nullptr;
+    grads_   = nullptr;
+    sibling_ = nullptr;
+    parent_  = nullptr;
+    child1_  = nullptr;
+    child2_  = nullptr;
 }
 
 
