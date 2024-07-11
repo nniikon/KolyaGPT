@@ -7,7 +7,8 @@
 
 SmartMatrix::SmartMatrix(std::size_t n_rows, std::size_t n_cols)
     : values_(nullptr), grads_(nullptr),
-      n_rows_(n_rows), n_cols_(n_cols), n_elems_(n_rows * n_cols) {
+      n_rows_(n_rows), n_cols_(n_cols), n_elems_(n_rows * n_cols),
+      child1_(nullptr), child2_(nullptr) {
 
     values_ = new float[n_rows * n_cols]{};
     grads_  = new float[n_rows * n_cols]{};
