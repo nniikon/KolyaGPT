@@ -27,7 +27,9 @@ Mnist::Mnist(const char* train_images_path,
       n_examples_(static_cast<std::size_t>(mnist_labels_.n_labels)),
       n_input_neurons_(mnist_images_.n_cols * mnist_images_.n_rows),
       n_hidden_layers_(n_hidden_layers),
-      n_hidden_layer_neurons_(n_hidden_layer_neurons) {
+      n_hidden_layer_neurons_(n_hidden_layer_neurons),
+      input_test_vector_ (1, n_input_neurons_),
+      output_test_vector_(1, n_output_neurons_) {
 
     assert(mnist_labels_.n_labels == mnist_images_.n_images);
 
@@ -41,7 +43,7 @@ Mnist::Mnist(const char* train_images_path,
 
     output_layer_ = std::make_unique<OutputLayer>(&middle_layers_[n_hidden_layers_ - 1], n_output_neurons_);
 
-    Dump();
+    // Dump();
 
     images_buffer_ = mnist_images_.buffer;
     labels_buffer_ = mnist_labels_.buffer;
@@ -92,4 +94,19 @@ float Mnist::Eval() {
 
 void Mnist::Backpropagate(float step) {
     output_layer_->BackpropagateRecursive(step);
+}
+
+
+void Mnist::EvalImage(float* input) {
+    assert(input);
+
+    for (std::size_t i = 0; i < n_input_neurons_; i++) {
+        input_layer_->SetValue(0, i, input[i]);
+    }
+
+    Eval();
+
+    for (std::size_t i = 0; i < n_output_neurons_; i++) {
+        std::cout << i << ": " << output_layer_->GetNormOutput(0, i) * 100.0f << "%\n";
+    }
 }

@@ -22,6 +22,8 @@ class Mnist {
         float Eval();
         void Backpropagate(float step);
 
+        void EvalImage(float* input);
+
     private:
         MnistParser mnist_parser_;
         MnistImages mnist_images_;
@@ -41,6 +43,9 @@ class Mnist {
         std::unique_ptr<InputLayer>  input_layer_;
         std::vector<MiddleLayer>     middle_layers_;
         std::unique_ptr<OutputLayer> output_layer_;
+
+        SmartMatrix  input_test_vector_;
+        SmartMatrix  output_test_vector_;
 
         std::vector<std::string> middle_layers_names_;
         std::string              output_layer_name_;

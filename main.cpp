@@ -17,7 +17,7 @@ void TestMnistLib();
 void TrainMnist();
 
 int main() {
-    TestMnistLib();
+    TestMnistLib();   
 }
 
 
@@ -223,6 +223,7 @@ void TrainMnist() {
 
 
 #include "mnist/mnist.h"
+#include "mnist/mnist_parser/file_to_buffer/file_to_buffer.h"
 void TestMnistLib() {
     Mnist mnist("mnist/mnist_training_data/train-images.idx3-ubyte",
                 "mnist/mnist_training_data/train-labels.idx1-ubyte",
@@ -231,22 +232,26 @@ void TestMnistLib() {
                 12);
 
     mnist.LoadWeights();
+    std::cout << "Loading weights..." << std::endl;
 
-    const float       kStep       = 2 * 1e-4f;
-    const std::size_t nIterations = 1'000;
+    const float       kStep       = 1 * 1e-4f;
+    const std::size_t nIterations = 11;
     for (std::size_t iter = 0; iter < nIterations; iter++) {
         std::cout << "Iteration " << iter << std::endl;
         float loss = mnist.Eval();
         std::cout << "loss: " << loss << std::endl;
         mnist.Backpropagate(kStep);
 
+        if (iter % 5 == 0 && iter != 0) {
+            mnist.SaveWeights();
+            std::cout << "Should I save? [y|n]\n";
+            if (std::getchar() == 'y')
+                std::cout << "Saving weights" << std::endl;
+        }
     }
-}
 
 
-#include "mnist/mnist_parser/file_to_buffer/file_to_buffer.h"
-void TestWriting() {
-    FILE* drawing_data = fopen("drawing.bin", "rb");
+    FILE* drawing_data = fopen("mnist/drawing.bin", "rb");
     if (drawing_data == nullptr) {
         std::cerr << "First, draw using draw.py" << std::endl;
         return;
@@ -262,4 +267,27 @@ void TestWriting() {
 
     float* float_buffer = reinterpret_cast<float*>(buffer);
 
+    mnist.EvalImage(float_buffer);
+
+    free(buffer);
+}
+
+
+void TestWriting() {
+    FILE* drawing_data = fopen("drawing.bin", "rb");
+    if (drawing_data == nullptr) {
+        std::cerr << "First, draw using draw.py" << std::endl;
+        return;
+    }
+
+    std::size_t buffer_size = 0;
+    char* buffer = (char*)ftbPutFileToBuffer(&buffer_size, drawing_data);
+    if (buffer == nullptr) {
+        std::cerr << "Error putting to buffer" << std::endl;
+        fclose(drawing_data);
+        return;
+    }
+
+
+    free(buffer);
 }
