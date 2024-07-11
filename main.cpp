@@ -1,4 +1,4 @@
-#include "include/smart_value.h"
+#include "include/DEPRECATED_smart_value.h"
 #include "include/smart_matrix.h"
 #include "include/MLP.h"
 #include "mnist/mnist_parser/mnist_parser.h"
@@ -11,11 +11,13 @@ void TestSmartValue ();
 void TestSmartMatrix();
 void TestMLP();
 void TestMnistParser();
+void TestWriting();
+void TestMnistLib();
 
 void TrainMnist();
 
 int main() {
-    TrainMnist();
+    TestMnistLib();
 }
 
 
@@ -136,8 +138,8 @@ void TestMLP() {
 
 
 void TestMnistParser() {
-    MnistParser mnist_parser("mnist/MNIST_data/train-images.idx3-ubyte",
-                             "mnist/MNIST_data/train-labels.idx1-ubyte");
+    MnistParser mnist_parser("mnist/mnist_training_data/train-images.idx3-ubyte",
+                             "mnist/mnist_training_data/train-labels.idx1-ubyte");
 
     MnistLabels mnist_labels = mnist_parser.GetMnistLabels();
     MnistImages mnist_images = mnist_parser.GetMnistImages();
@@ -149,9 +151,12 @@ void TestMnistParser() {
 }
 
 
+const char* middle_layer1_saveload = "mnist/mnist_weights/middle1.data";
+const char* middle_layer2_saveload = "mnist/mnist_weights/middle2.data";
+const char*        output_saveload = "mnist/mnist_weights/output.data";
 void TrainMnist() {
-    MnistParser mnist_parser("mnist/MNIST_data/train-images.idx3-ubyte",
-                             "mnist/MNIST_data/train-labels.idx1-ubyte");
+    MnistParser mnist_parser("mnist/mnist_training_data/train-images.idx3-ubyte",
+                             "mnist/mnist_training_data/train-labels.idx1-ubyte");
 
     MnistImages mnist_images = mnist_parser.GetMnistImages();
     MnistLabels mnist_labels = mnist_parser.GetMnistLabels();
@@ -184,27 +189,19 @@ void TrainMnist() {
     //middle_layer2.SetNormalRand();
     //output_layer .SetNormalRand();
 
-    const char* middle_layer1_saveload = "mnist_data/middle1.data";
-    const char* middle_layer2_saveload = "mnist_data/middle2.data";
-    const char*        output_saveload = "mnist_data/output.data";
-
     middle_layer1.LoadParamsFromFile(middle_layer1_saveload);
     middle_layer2.LoadParamsFromFile(middle_layer2_saveload);
     output_layer .LoadParamsFromFile(       output_saveload);
 
+    bool isSaving = false;
     const float kStep = 2 * 1e-4f;
     const std::size_t kIterations = 1'000'000;
     for (std::size_t i = 0; i < kIterations; i++) {
-        input_layer  .ResetGrads();
-        middle_layer1.ResetGrads();
-        middle_layer2.ResetGrads();
-        output_layer .ResetGrads();
+        output_layer.ResetGradsRecursive();
 
-        middle_layer1.Eval();
-        middle_layer2.Eval();
-        float loss = output_layer.EvalLoss();
+        output_layer.EvalRecursive();
 
-        std::cout << "Iteration " << i << ": loss = " << loss << "\n"; 
+        std::cout << "Iteration " << i << ": loss = " << output_layer.GetLoss() << "\n"; 
 
         //if (i == kIterations - 1 || i == 0)
         //    for (size_t l = 0; l < kExamples; l++) {
@@ -213,16 +210,56 @@ void TrainMnist() {
         //        }
         //    }
 
-        middle_layer1.Backpropagate(kStep);
-        middle_layer2.Backpropagate(kStep);
-        output_layer .Backpropagate(kStep);
+        output_layer.BackpropagateRecursive(kStep);
 
-        if (i % 10 == 0) {
+        if (i % 10 == 0 && isSaving) {
             std::cout << "Saving...\n";
             middle_layer1.SaveParamsToFile(middle_layer1_saveload);
             middle_layer2.SaveParamsToFile(middle_layer2_saveload);
             output_layer .SaveParamsToFile(       output_saveload);
         }
     }
+}
+
+
+#include "mnist/mnist.h"
+void TestMnistLib() {
+    Mnist mnist("mnist/mnist_training_data/train-images.idx3-ubyte",
+                "mnist/mnist_training_data/train-labels.idx1-ubyte",
+                "mnist/mnist_weights",
+                2,
+                12);
+
+    mnist.LoadWeights();
+
+    const float       kStep       = 2 * 1e-4f;
+    const std::size_t nIterations = 1'000;
+    for (std::size_t iter = 0; iter < nIterations; iter++) {
+        std::cout << "Iteration " << iter << std::endl;
+        float loss = mnist.Eval();
+        std::cout << "loss: " << loss << std::endl;
+        mnist.Backpropagate(kStep);
+
+    }
+}
+
+
+#include "mnist/mnist_parser/file_to_buffer/file_to_buffer.h"
+void TestWriting() {
+    FILE* drawing_data = fopen("drawing.bin", "rb");
+    if (drawing_data == nullptr) {
+        std::cerr << "First, draw using draw.py" << std::endl;
+        return;
+    }
+
+    std::size_t buffer_size = 0;
+    char* buffer = (char*)ftbPutFileToBuffer(&buffer_size, drawing_data);
+    if (buffer == nullptr) {
+        std::cerr << "Error putting to buffer" << std::endl;
+        fclose(drawing_data);
+        return;
+    }
+
+    float* float_buffer = reinterpret_cast<float*>(buffer);
 
 }
