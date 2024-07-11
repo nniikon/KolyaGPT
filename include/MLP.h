@@ -18,6 +18,9 @@ class Layer {
         virtual void        ResetGrads() = 0;
         std::size_t          GetOutputRows() const;
         std::size_t          GetOutputCols() const;
+        Layer*               GetInputLayer() const;
+
+        void                 SetInputLayer(Layer* layer);
 
         virtual void EvalRecursive()                    = 0;
         virtual void ResetGradsRecursive()              = 0;

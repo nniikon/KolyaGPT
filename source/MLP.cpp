@@ -52,6 +52,9 @@ Layer& Layer::operator=(Layer&& other) {
 }
 
 
+void Layer::SetInputLayer(Layer* layer) {input_layer_ = layer; }
+
+Layer*      Layer::GetInputLayer() const { return input_layer_; }
 std::size_t Layer::GetOutputRows() const { return output_.GetRows(); }
 std::size_t Layer::GetOutputCols() const { return output_.GetCols(); }
 
