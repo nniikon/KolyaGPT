@@ -295,20 +295,16 @@ void SmartMatrix::Mul(SmartMatrix* first, SmartMatrix* second) {
     std::size_t M = n_cols_;
     std::size_t L = first->GetCols();
 
-    // FIXME: optimize
-    for (std::size_t n = 0; n < N; n++) {
-        for (std::size_t m = 0; m < M; m++) {
-            float dot_product = 0.0f;
+    float* first_values  = first ->values_;
+    float* second_values = second->values_;
+    float* output_values =         values_;
 
-            for (std::size_t l = 0; l < L; l++) {
-                dot_product += first->GetValue(n, l) * second->GetValue(l, m);
-            }
-
-            SetValue(n, m, dot_product);
-        }
-    }
-
+    Chubarov_Mul(N, M, L, output_values, first_values, second_values);
     SetBinaryFamily(first, second, OperationType::LMul, OperationType::RMul);
+    return;
+
+    // FIXME: optimize
+
 }
 
 
@@ -437,32 +433,22 @@ void SmartMatrix::EvalGradLMul_() {
     std::size_t N = n_rows_;
     std::size_t M = parent_->GetCols();
     std::size_t L = n_cols_;
+    float* sibling_values = sibling_->values_;
+    float* parent_grads   = parent_->grads_;
+    float* grads          = grads_;
 
-    for (std::size_t n = 0; n < N; n++) {
-        for (std::size_t m = 0; m < M; m++) {
-            for (std::size_t l = 0; l < L; l++) {
-                float local_grad = sibling_->GetValue(l, m);
-                float parent_grad = parent_->GetGrad(n, m);
-                AddGrad(n, l, local_grad * parent_grad);
-            }
-        }
-    }
+    Chubarov_EvalGradLMul(N, M, L, grads, sibling_values, parent_grads);
 }
 
 void SmartMatrix::EvalGradRMul_() {
     std::size_t N = parent_->GetRows();
     std::size_t M = n_cols_;
     std::size_t L = n_rows_;
+    float* sibling_values = sibling_->values_;
+    float* parent_grads   = parent_->grads_;
+    float* grads          = grads_;
 
-    for (std::size_t n = 0; n < N; n++) {
-        for (std::size_t m = 0; m < M; m++) {
-            for (std::size_t l = 0; l < L; l++) {
-                float local_grad = sibling_->GetValue(n, l);
-                float parent_grad = parent_->GetGrad(n, m);
-                AddGrad(l, m, local_grad * parent_grad);
-            }
-        }
-    }
+    Chubarov_EvalGradRMul(N, M, L, grads, sibling_values, parent_grads);
 }
 
 void SmartMatrix::EvalGradSigm_() {

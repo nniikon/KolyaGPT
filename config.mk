@@ -1,4 +1,6 @@
-CFLAGS = -O3 -Wall \
+GPU = 1# 1 - use Cuda, 0 - use CPU
+
+CFLAGS = -O3 -g -Wall \
 -Wmissing-declarations -Wcast-align -Wcast-qual \
 -Wchar-subscripts -Wconversion \
 -Wempty-body -Wfloat-equal -Wformat-nonliteral -Wformat-security \
@@ -12,13 +14,10 @@ CFLAGS = -O3 -Wall \
 -Wno-varargs -Wstack-protector -fcheck-new \
 -fstack-protector -fstrict-overflow \
 -fno-omit-frame-pointer \
--fsanitize=address,bool,bounds,enum,float-cast-overflow,$\
-float-divide-by-zero,integer-divide-by-zero,leak,nonnull-attribute,null,$\
-object-size,return,returns-nonnull-attribute,shift,signed-integer-overflow,$\
-undefined,unreachable,vla-bound,vptr
 
 CFLAGS += -D DEBUG
 CFLAGS += -D LOG
+NFLAGS = -lcuda -O3
 
 export CFLAGS
 
@@ -26,3 +25,10 @@ export BUILD_DIR = ${CURDIR}/build
 export EXEC_NAME = gpt 
 
 export GXX = g++
+export NVXX = nvcc
+
+ifeq ($(GPU),1)
+	export LDXX = NVXX
+else
+	export LDXX = GXX
+endif

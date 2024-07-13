@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <fstream>
+#include "../chubarov_lib/chubarov.h"
 
 class SmartMatrix {
 
