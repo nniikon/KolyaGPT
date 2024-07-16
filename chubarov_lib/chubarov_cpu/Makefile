@@ -4,7 +4,7 @@ OBJS = $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(SRCS))
 all: $(BUILD_DIR) $(OBJS)
 
 $(BUILD_DIR)/%.o: %.cpp
-	@$(NVXX) $^ -c -o $@
+	@$(GXX) $^ -c -o $@
 
 $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)
