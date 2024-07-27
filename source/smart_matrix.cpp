@@ -320,6 +320,24 @@ void SmartMatrix::Sigm(SmartMatrix* first) {
     SetUnaryFamily(first, OperationType::Sigm);
 }
 
+void SmartMatrix::Softmax(SmartMatrix* first) {
+    // FIXME: throw if matrices are differently sized
+    assert(n_rows_ == first->GetRows());
+    assert(n_cols_ == first->GetCols());
+
+    // NOTE: can easily be optimized
+    float exp_sum = 0.0f;
+    for (std::size_t i = 0; i < n_elems_; i++) {
+        exp_sum += expf(first->values_[i]);
+    }
+
+    for (std::size_t i = 0; i < n_elems_; i++) {
+        values_[i] = expf(first->values_[i]) / exp_sum;
+    }
+
+    SetUnaryFamily(first, OperationType::Softmax);
+}
+
 
 void SmartMatrix::DumpMatrix_(std::ofstream& out) const {
     out << "Node" << this << " [label=\"{";
@@ -399,6 +417,9 @@ void SmartMatrix::EvalGradRecursive_() {
         case OperationType::Sigm:
             EvalGradSigm_();
             break;
+        case OperationType::Softmax:
+            EvalGradSoftmax_();
+            break;
         case OperationType::LossSrc:
             EvalGradLossSrc_();
             break;
@@ -458,6 +479,16 @@ void SmartMatrix::EvalGradSigm_() {
     }
 }
 
+// dS_i/dA_j = S_i (1 - S_j)
+void SmartMatrix::EvalGradSoftmax_() {
+    for (std::size_t j = 0; j < n_elems_; j++) {
+        for (std::size_t i = 0; i < n_elems_; i++) {
+            grads_[j] += parent_->grads_[i] * 
+                         parent_->values_[i] * (1 - parent_->values_[j]);
+        }
+    }
+}
+
 void SmartMatrix::EvalGradLossSrc_() {
     for (std::size_t i = 0; i < n_elems_; i++) {
         float local_grad = 2 * (values_[i] - sibling_->values_[i]);
@@ -511,6 +542,7 @@ void SmartMatrix::DumpRecursive_(bool isSibling, std::ofstream& out) const {
             case OperationType::RSub:
             case OperationType::LSub:       op_str = "-";       break;
             case OperationType::Sigm:       op_str = "sigm";    break;
+            case OperationType::Softmax:    op_str = "softmax"; break;
             case OperationType::LossSrc:
             case OperationType::LossRef:    op_str = "loss";    break;
 
