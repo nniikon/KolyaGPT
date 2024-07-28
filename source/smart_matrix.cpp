@@ -6,8 +6,13 @@
 #include <random>
 
 SmartMatrix::SmartMatrix(std::size_t n_rows, std::size_t n_cols)
-    : values_(nullptr), grads_(nullptr),
-      n_rows_(n_rows), n_cols_(n_cols), n_elems_(n_rows * n_cols),
+    : values_(nullptr),
+      grads_(nullptr),
+      n_rows_(n_rows),
+      n_cols_(n_cols),
+      n_elems_(n_rows * n_cols),
+      sibling_(nullptr),
+      parent_(nullptr),
       child1_(nullptr), child2_(nullptr) {
 
     values_ = new float[n_rows * n_cols]{};
@@ -35,16 +40,16 @@ SmartMatrix::SmartMatrix(const SmartMatrix& other)
 
 
 SmartMatrix::SmartMatrix(SmartMatrix&& other)
-    : values_(other.values_),
-      grads_(other.grads_),
-      n_rows_(other.n_rows_),
-      n_cols_(other.n_cols_),
-      n_elems_(other.n_elems_),
+    : values_     (other.values_),
+      grads_      (other.grads_),
+      n_rows_     (other.n_rows_),
+      n_cols_     (other.n_cols_),
+      n_elems_    (other.n_elems_),
       parent_oper_(other.parent_oper_),
-      sibling_(other.sibling_),
-      parent_(other.parent_),
-      child1_(other.child1_),
-      child2_(other.child2_) {
+      sibling_    (other.sibling_),
+      parent_     (other.parent_),
+      child1_     (other.child1_),
+      child2_     (other.child2_) {
 
     other.values_  = nullptr;
     other.grads_   = nullptr;
@@ -331,6 +336,8 @@ void SmartMatrix::Softmax(SmartMatrix* first) {
         exp_sum += expf(first->values_[i]);
     }
 
+    assert(exp_sum > 0.00000001f);
+
     for (std::size_t i = 0; i < n_elems_; i++) {
         values_[i] = expf(first->values_[i]) / exp_sum;
     }
@@ -408,27 +415,13 @@ void SmartMatrix::EvalGradRecursive_() {
         case OperationType::Add:
             EvalGradAddMatrixLSubAdd_();
             break;
-        case OperationType::LMul:
-            EvalGradLMul_();
-            break;
-        case OperationType::RMul:
-            EvalGradRMul_();
-            break;
-        case OperationType::Sigm:
-            EvalGradSigm_();
-            break;
-        case OperationType::Softmax:
-            EvalGradSoftmax_();
-            break;
-        case OperationType::LossSrc:
-            EvalGradLossSrc_();
-            break;
-        case OperationType::AddVector:
-            EvalGradAddVector_();
-            break;
-        case OperationType::LossRef:
-            // Not needed
-            break;
+        case OperationType::LMul:      EvalGradLMul_();      break;
+        case OperationType::RMul:      EvalGradRMul_();      break;
+        case OperationType::Sigm:      EvalGradSigm_();      break;
+        case OperationType::Softmax:   EvalGradSoftmax_();   break;
+        case OperationType::LossSrc:   EvalGradLossSrc_();   break;
+        case OperationType::AddVector: EvalGradAddVector_(); break;
+        case OperationType::LossRef:   /* Not needed */      break;
         case OperationType::None:
         default:
             assert(0);
@@ -479,12 +472,12 @@ void SmartMatrix::EvalGradSigm_() {
     }
 }
 
-// dS_i/dA_j = S_i (1 - S_j)
+// dS_i/dA_j = S_i ((i == j) - S_j)
 void SmartMatrix::EvalGradSoftmax_() {
     for (std::size_t j = 0; j < n_elems_; j++) {
         for (std::size_t i = 0; i < n_elems_; i++) {
             grads_[j] += parent_->grads_[i] * 
-                         parent_->values_[i] * (1 - parent_->values_[j]);
+                         parent_->values_[i] * ((i == j) - parent_->values_[j]);
         }
     }
 }
