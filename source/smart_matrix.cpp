@@ -331,15 +331,18 @@ void SmartMatrix::Softmax(SmartMatrix* first) {
     assert(n_cols_ == first->GetCols());
 
     // NOTE: can easily be optimized
-    float exp_sum = 0.0f;
-    for (std::size_t i = 0; i < n_elems_; i++) {
-        exp_sum += expf(first->values_[i]);
-    }
+    for (std::size_t example = 0; example < n_rows_; example++)
+    {
+        float exp_sum = 0.0f;
+        for (std::size_t i = 0; i < n_cols_; i++) {
+            exp_sum += expf(first->GetValue(example, i));
+        }
 
-    assert(exp_sum > 0.00000001f);
+        assert(exp_sum > 0.00000001f);
 
-    for (std::size_t i = 0; i < n_elems_; i++) {
-        values_[i] = expf(first->values_[i]) / exp_sum;
+        for (std::size_t i = 0; i < n_cols_; i++) {
+            SetValue(example, i, expf(first->GetValue(example, i)) / exp_sum);
+        }
     }
 
     SetUnaryFamily(first, OperationType::Softmax);
@@ -474,10 +477,16 @@ void SmartMatrix::EvalGradSigm_() {
 
 // dS_i/dA_j = S_i ((i == j) - S_j)
 void SmartMatrix::EvalGradSoftmax_() {
-    for (std::size_t j = 0; j < n_elems_; j++) {
-        for (std::size_t i = 0; i < n_elems_; i++) {
-            grads_[j] += parent_->grads_[i] * 
-                         parent_->values_[i] * ((i == j) - parent_->values_[j]);
+    for (std::size_t example = 0; example < n_rows_; example++)
+    {
+        for (std::size_t j = 0; j < n_cols_; j++) {
+            float localGrad = 0.0f;
+            for (std::size_t i = 0; i < n_cols_; i++) {
+                localGrad += parent_->GetGrad(example, i) *
+                             parent_->GetValue(example, i) * ((i == j) - parent_->GetValue(example, j));
+
+                AddGrad(example, j, localGrad);
+            }
         }
     }
 }
