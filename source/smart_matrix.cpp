@@ -6,8 +6,13 @@
 #include <random>
 
 SmartMatrix::SmartMatrix(std::size_t n_rows, std::size_t n_cols)
-    : values_(nullptr), grads_(nullptr),
-      n_rows_(n_rows), n_cols_(n_cols), n_elems_(n_rows * n_cols),
+    : values_(nullptr),
+      grads_(nullptr),
+      n_rows_(n_rows),
+      n_cols_(n_cols),
+      n_elems_(n_rows * n_cols),
+      sibling_(nullptr),
+      parent_(nullptr),
       child1_(nullptr), child2_(nullptr) {
 
     values_ = new float[n_rows * n_cols]{};
@@ -35,16 +40,16 @@ SmartMatrix::SmartMatrix(const SmartMatrix& other)
 
 
 SmartMatrix::SmartMatrix(SmartMatrix&& other)
-    : values_(other.values_),
-      grads_(other.grads_),
-      n_rows_(other.n_rows_),
-      n_cols_(other.n_cols_),
-      n_elems_(other.n_elems_),
+    : values_     (other.values_),
+      grads_      (other.grads_),
+      n_rows_     (other.n_rows_),
+      n_cols_     (other.n_cols_),
+      n_elems_    (other.n_elems_),
       parent_oper_(other.parent_oper_),
-      sibling_(other.sibling_),
-      parent_(other.parent_),
-      child1_(other.child1_),
-      child2_(other.child2_) {
+      sibling_    (other.sibling_),
+      parent_     (other.parent_),
+      child1_     (other.child1_),
+      child2_     (other.child2_) {
 
     other.values_  = nullptr;
     other.grads_   = nullptr;
@@ -320,6 +325,29 @@ void SmartMatrix::Sigm(SmartMatrix* first) {
     SetUnaryFamily(first, OperationType::Sigm);
 }
 
+void SmartMatrix::Softmax(SmartMatrix* first) {
+    // FIXME: throw if matrices are differently sized
+    assert(n_rows_ == first->GetRows());
+    assert(n_cols_ == first->GetCols());
+
+    // NOTE: can easily be optimized
+    for (std::size_t example = 0; example < n_rows_; example++)
+    {
+        float exp_sum = 0.0f;
+        for (std::size_t i = 0; i < n_cols_; i++) {
+            exp_sum += expf(first->GetValue(example, i));
+        }
+
+        assert(exp_sum > 0.00000001f);
+
+        for (std::size_t i = 0; i < n_cols_; i++) {
+            SetValue(example, i, expf(first->GetValue(example, i)) / exp_sum);
+        }
+    }
+
+    SetUnaryFamily(first, OperationType::Softmax);
+}
+
 
 void SmartMatrix::DumpMatrix_(std::ofstream& out) const {
     out << "Node" << this << " [label=\"{";
@@ -390,24 +418,13 @@ void SmartMatrix::EvalGradRecursive_() {
         case OperationType::Add:
             EvalGradAddMatrixLSubAdd_();
             break;
-        case OperationType::LMul:
-            EvalGradLMul_();
-            break;
-        case OperationType::RMul:
-            EvalGradRMul_();
-            break;
-        case OperationType::Sigm:
-            EvalGradSigm_();
-            break;
-        case OperationType::LossSrc:
-            EvalGradLossSrc_();
-            break;
-        case OperationType::AddVector:
-            EvalGradAddVector_();
-            break;
-        case OperationType::LossRef:
-            // Not needed
-            break;
+        case OperationType::LMul:      EvalGradLMul_();      break;
+        case OperationType::RMul:      EvalGradRMul_();      break;
+        case OperationType::Sigm:      EvalGradSigm_();      break;
+        case OperationType::Softmax:   EvalGradSoftmax_();   break;
+        case OperationType::LossSrc:   EvalGradLossSrc_();   break;
+        case OperationType::AddVector: EvalGradAddVector_(); break;
+        case OperationType::LossRef:   /* Not needed */      break;
         case OperationType::None:
         default:
             assert(0);
@@ -455,6 +472,22 @@ void SmartMatrix::EvalGradSigm_() {
     for (std::size_t i = 0; i < n_elems_; i++) {
         float local_grad = parent_->values_[i] * (1 - parent_->values_[i]);
         grads_[i] += parent_->grads_[i] * local_grad;
+    }
+}
+
+// dS_i/dA_j = S_i ((i == j) - S_j)
+void SmartMatrix::EvalGradSoftmax_() {
+    for (std::size_t example = 0; example < n_rows_; example++)
+    {
+        for (std::size_t j = 0; j < n_cols_; j++) {
+            float localGrad = 0.0f;
+            for (std::size_t i = 0; i < n_cols_; i++) {
+                localGrad += parent_->GetGrad(example, i) *
+                             parent_->GetValue(example, i) * ((i == j) - parent_->GetValue(example, j));
+
+                AddGrad(example, j, localGrad);
+            }
+        }
     }
 }
 
@@ -511,6 +544,7 @@ void SmartMatrix::DumpRecursive_(bool isSibling, std::ofstream& out) const {
             case OperationType::RSub:
             case OperationType::LSub:       op_str = "-";       break;
             case OperationType::Sigm:       op_str = "sigm";    break;
+            case OperationType::Softmax:    op_str = "softmax"; break;
             case OperationType::LossSrc:
             case OperationType::LossRef:    op_str = "loss";    break;
 

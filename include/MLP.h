@@ -70,7 +70,7 @@ class MiddleLayer : public Layer {
         MiddleLayer& operator=(MiddleLayer&& other);
 
         void SetNormalRand();
-        void Eval();
+        virtual void Eval();
         void Backpropagate(float step);
         void ResetGrads() override;
         void SaveParamsToFile  (const char* file_name);
@@ -107,8 +107,10 @@ class OutputLayer : public MiddleLayer {
         float GetLoss() const;
         float EvalLoss();
         void Dump();
+        void Eval() override;
         void ResetGrads() override;
         float GetNormOutput(std::size_t example, std::size_t output);
+        float GetProbOutput(std::size_t example, std::size_t output);
 
         void  SetExpectedValue(std::size_t example, std::size_t output, float value);
         float GetExpectedValue(std::size_t example, std::size_t output);

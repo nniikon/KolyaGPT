@@ -321,9 +321,9 @@ OutputLayer::~OutputLayer() {
 
 
 OutputLayer::OutputLayer(const OutputLayer& other)
-    : MiddleLayer     (other),
-      loss_           (other.loss_),
-      expected_output_(other.expected_output_) {
+    : MiddleLayer        (other),
+      loss_              (other.loss_),
+      expected_output_   (other.expected_output_) {
 }
 
 
@@ -340,9 +340,9 @@ OutputLayer& OutputLayer::operator=(const OutputLayer& other) {
 
 
 OutputLayer::OutputLayer(OutputLayer&& other) 
-    : MiddleLayer     (std::move(other)),
-      loss_           (std::move(other.loss_)),
-      expected_output_(std::move(other.expected_output_)) {
+    : MiddleLayer        (std::move(other)),
+      loss_              (std::move(other.loss_)),
+      expected_output_   (std::move(other.expected_output_)) {
 }
 
 
@@ -351,8 +351,8 @@ OutputLayer& OutputLayer::operator=(OutputLayer&& other) {
 
     MiddleLayer::operator=(std::move(other));
 
-    loss_            = std::move(other.loss_);
-    expected_output_ = std::move(other.expected_output_);
+    loss_               = std::move(other.loss_);
+    expected_output_    = std::move(other.expected_output_);
 
     return *this;
 }
@@ -365,6 +365,13 @@ void OutputLayer::SetExpectedValue(std::size_t example, std::size_t output, floa
 
 float OutputLayer::GetExpectedValue(std::size_t example, std::size_t output) {
     return expected_output_.GetValue(example, output);
+}
+
+
+void OutputLayer::Eval() {
+    unbiased_output_.Mul(input_layer_->GetOutput(), &weights_);
+    output_.AddVectorToMatrix(&unbiased_output_, &biases_);
+    norm_output_.Softmax(&output_);
 }
 
 
@@ -391,6 +398,7 @@ void OutputLayer::ResetGrads() {
     loss_           .ResetGrad();
     expected_output_.ResetGrad();
 }
+
 
 float OutputLayer::GetLoss() const { return loss_.GetValue(0, 0); }
 
