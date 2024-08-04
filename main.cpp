@@ -18,7 +18,7 @@ void TestMnistLib();
 void TrainMnist();
 
 int main() {
-    TestMnistLib();   
+    TestMLP();
 }
 
 
@@ -42,42 +42,50 @@ void TestSmartValue() {
 }
 
 void TestSmartMatrix() {
-    const std::size_t kExampleInputs = 1;
-    const std::size_t kInputSize     = 3;
-    const std::size_t kOutputSize    = 2;
+    const std::size_t kExampleInputs = 10;
+    const std::size_t kInputSize     = 14;
+    const std::size_t kOutputSize    = 15;
 
     SmartMatrix input_layers   (kExampleInputs, kInputSize);
     SmartMatrix weights        (kInputSize, kOutputSize);
     SmartMatrix unbiased_output(kExampleInputs, kOutputSize);
     SmartMatrix     norm_output(kExampleInputs, kOutputSize);
+    SmartMatrix     prob_output(kExampleInputs, kOutputSize);
     SmartMatrix expected_output(kExampleInputs, kOutputSize);
     SmartMatrix            loss(1, 1);
 
-    for (std::size_t i = 0; i < kOutputSize; i++)
-        expected_output.SetValue(0, i, (float)i / 4);
+    for (std::size_t j = 0; j < kExampleInputs; j++)
+        for (std::size_t i = 0; i < kOutputSize; i++)
+            expected_output.SetValue(j, i, i == j);
 
     input_layers.SetMatrixNormRand();
     weights     .SetMatrixNormRand();
 
-    for (std::size_t i = 0; i < 1'000'000; i++) {
-        weights.ResetGrad();
-        input_layers.ResetGrad();
+    for (std::size_t i = 0; i < 100'000; i++) {
+        weights.        ResetGrad();
+        input_layers.   ResetGrad();
         unbiased_output.ResetGrad();
-        norm_output.ResetGrad();
-        loss.ResetGrad();
+        norm_output.    ResetGrad();
+        prob_output.    ResetGrad();
+        loss.           ResetGrad();
 
         unbiased_output.Mul(&input_layers, &weights);
-        norm_output.Sigm   (&unbiased_output);
-        loss.Loss          (&norm_output, &expected_output);
+        prob_output.Softmax(&unbiased_output);
+        loss.Loss          (&prob_output, &expected_output);
 
         loss.EvalGrad();
 
-        //std::cout << "Iteration " << i << ": loss = " << loss.GetValue(0, 0) << "\n"; 
-        weights.AdjustValues(0.01f);
+        if (i % 1000 == 0)
+            std::cout << "Iteration " << i << ": loss = " << loss.GetValue(0, 0) << "\n"; 
+
+        weights.AdjustValues(0.1f);
     }
 
-    for (size_t i = 0; i < kOutputSize; i++) {
-        std::cout << "Elem " << i << " = " << norm_output.GetValue(0, i) << "\tExpected = " << expected_output.GetValue(0, i) << "\n";
+    for (std::size_t j = 0; j < kExampleInputs; j++) {
+        for (size_t i = 0; i < kOutputSize; i++) {
+            std::cout << "Prob " << i << " = " << prob_output.GetValue(j, i) << "\tExpected = " << expected_output.GetValue(j, i) << "\n";
+        }
+        std::cout << std::endl;
     }
 
     loss.Dump();
@@ -85,8 +93,8 @@ void TestSmartMatrix() {
 
 
 void TestMLP() {
-    const std::size_t kExamples      = 6000;
-    const std::size_t kInputNeurons  = 28*28;
+    const std::size_t kExamples      = 10;
+    const std::size_t kInputNeurons  = 28;
     const std::size_t kMiddleNeurons = 12;
     const std::size_t kOutputNeurons = 10;
 
@@ -101,15 +109,15 @@ void TestMLP() {
         }
 
         for (std::size_t j = 0; j < kOutputNeurons; j++) {
-            output_layer.SetExpectedValue(i, j, (float)(i+j) / (kExamples + kInputNeurons - 2));
+            output_layer.SetExpectedValue(i, j, i == j);
         }
     }
     middle_layer1.SetNormalRand();
     middle_layer2.SetNormalRand();
     output_layer.SetNormalRand();
 
-    const float kStep = 0.000001f;
-    const std::size_t kIterations = 10000;
+    const float kStep = 0.0001f;
+    const std::size_t kIterations = 1000000;
     for (std::size_t i = 0; i < kIterations; i++) {
         input_layer  .ResetGrads();
         middle_layer1.ResetGrads();
@@ -134,7 +142,6 @@ void TestMLP() {
         output_layer .Backpropagate(kStep);
     }
     output_layer.Dump();
-    
 }
 
 
@@ -168,7 +175,7 @@ void TrainMnist() {
     assert(mnist_labels.n_labels == mnist_images.n_images);
 
     // const std::size_t kExamples      = static_cast<std::size_t>(mnist_labels.n_labels);
-    const std::size_t kExamples      = 2'000;
+    const std::size_t kExamples      = 2'0;
     const std::size_t kInputNeurons  = mnist_images.n_cols * mnist_images.n_rows;
     const std::size_t kMiddleNeurons = 16;
     const std::size_t kOutputNeurons = 10;
@@ -186,9 +193,9 @@ void TrainMnist() {
         output_layer.SetExpectedValue(example, labels_buffer[example], 1.0f);
     }
 
-    // middle_layer1.SetNormalRand();
-    // middle_layer2.SetNormalRand();
-    // output_layer .SetNormalRand();
+    middle_layer1.SetNormalRand();
+    middle_layer2.SetNormalRand();
+    output_layer .SetNormalRand();
 
     for (std::size_t example = kExamples; example < 2 * kExamples; example++) {
         for (std::size_t neuron = 0; neuron < kInputNeurons; neuron++) {
@@ -198,25 +205,17 @@ void TrainMnist() {
         output_layer.SetExpectedValue(example, labels_buffer[example], 1.0f);
     }
 
-    middle_layer1.LoadParamsFromFile(middle_layer1_saveload);
-    middle_layer2.LoadParamsFromFile(middle_layer2_saveload);
-    output_layer .LoadParamsFromFile(       output_saveload);
+    // middle_layer1.LoadParamsFromFile(middle_layer1_saveload);
+    // middle_layer2.LoadParamsFromFile(middle_layer2_saveload);
+    // output_layer .LoadParamsFromFile(       output_saveload);
 
+    // output_layer.EvalRecursive();
 
-    output_layer.EvalRecursive();
-
-    for (std::size_t i = 0; i < 4; i++)
-        for (std::size_t j = 0; j < 10; j++) {
-            std::cout << j << ": " << output_layer.GetExpectedValue(i, j) << " vs " << output_layer.GetNormOutput(i, j) << "\n";
-        }
-
-    return;
-    bool isSaving = true;
-    const float kStep = 3 * 1e-4f;
+    bool isSaving = false;
+    const float kStep = 200;
     const std::size_t kIterations = 1'000'000;
     for (std::size_t i = 0; i < kIterations; i++) {
         output_layer.ResetGradsRecursive();
-
         output_layer.EvalRecursive();
 
         std::cout << "Iteration " << i << ": loss = " << output_layer.GetLoss() << "\n"; 
@@ -225,24 +224,14 @@ void TrainMnist() {
 
         if (i % 100 == 0 && isSaving) {
             std::cout << "Saving...\n";
-            middle_layer1.SaveParamsToFile(middle_layer1_saveload);
-            middle_layer2.SaveParamsToFile(middle_layer2_saveload);
-            output_layer .SaveParamsToFile(       output_saveload);
+            // middle_layer1.SaveParamsToFile(middle_layer1_saveload);
+            // middle_layer2.SaveParamsToFile(middle_layer2_saveload);
+            // output_layer .SaveParamsToFile(       output_saveload);
         }
 
-        //std::cout << std::fixed << std::setprecision(1);
-        // for (std::size_t j = 0; j < kInputNeurons; j++) {
-        //     if (j % 28 == 0)
-        //         std::cout << "\n";
-
-        //     std::cout << input_layer.GetOutput()->GetValue(0, j) * 10 << " ";
+        // for (std::size_t j = 0; j < 10; j++) {
+        //     std::cout << j << ": " << output_layer.GetExpectedValue(0, j) << " vs " << output_layer.GetNormOutput(0, j) << "\n";
         // }
-
-        // std::cout << "\n";
-
-        for (std::size_t j = 0; j < 10; j++) {
-            std::cout << j << ": " << output_layer.GetExpectedValue(0, j) << " vs " << output_layer.GetNormOutput(0, j) << "\n";
-        }
     }
     output_layer.Dump();
 }
