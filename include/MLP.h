@@ -110,7 +110,6 @@ class OutputLayer : public MiddleLayer {
         void Eval() override;
         void ResetGrads() override;
         float GetNormOutput(std::size_t example, std::size_t output);
-        float GetProbOutput(std::size_t example, std::size_t output);
 
         void  SetExpectedValue(std::size_t example, std::size_t output, float value);
         float GetExpectedValue(std::size_t example, std::size_t output);
