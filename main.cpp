@@ -48,9 +48,9 @@ void TestSmartMatrix() {
         prob_output.    ResetGrad();
         loss.           ResetGrad();
 
-        unbiased_output.Mul(&input_layers, &weights);
-        prob_output.Softmax(&unbiased_output);
-        loss.Loss          (&prob_output, &expected_output);
+        unbiased_output.Mul  (&input_layers, &weights);
+        prob_output.Softmax  (&unbiased_output);
+        loss.SquaredErrorLoss(&prob_output, &expected_output);
 
         loss.EvalGrad();
 

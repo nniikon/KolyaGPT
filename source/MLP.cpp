@@ -377,7 +377,7 @@ void OutputLayer::Eval() {
 
 float OutputLayer::EvalLoss() {
     Eval();
-    loss_.Loss(&norm_output_, &expected_output_);
+    loss_.SquaredErrorLoss(&norm_output_, &expected_output_);
     loss_.EvalGrad();
 
     return loss_.GetValue(0, 0);

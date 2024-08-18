@@ -226,7 +226,7 @@ void SmartMatrix::SetUnaryFamily(SmartMatrix* first, OperationType type) {
 }
 
 
-void SmartMatrix::Loss(SmartMatrix* src, SmartMatrix* ref) {
+void SmartMatrix::SquaredErrorLoss(SmartMatrix* src, SmartMatrix* ref) {
     // FIXME: throw if matrices are differently sized
 
     assert(src->GetRows() == ref->GetRows());
@@ -240,7 +240,8 @@ void SmartMatrix::Loss(SmartMatrix* src, SmartMatrix* ref) {
     }
     values_[0] = loss;
 
-    SetBinaryFamily(src, ref, OperationType::LossSrc, OperationType::LossRef);
+    SetBinaryFamily(src, ref, OperationType::SquaredErrorLossSrc,
+                              OperationType::SquaredErrorLossRef);
 }
 
 
@@ -410,21 +411,17 @@ void SmartMatrix::EvalGradRecursive_() {
     assert(parent_ != nullptr);
 
     switch(parent_oper_) {
-        case OperationType::RSub:
-            EvalGradRSub_();
-            break;
+        case OperationType::RSub:                EvalGradRSub_(); break;
         case OperationType::AddMatrix:
         case OperationType::LSub:
-        case OperationType::Add:
-            EvalGradAddMatrixLSubAdd_();
-            break;
-        case OperationType::LMul:      EvalGradLMul_();      break;
-        case OperationType::RMul:      EvalGradRMul_();      break;
-        case OperationType::Sigm:      EvalGradSigm_();      break;
-        case OperationType::Softmax:   EvalGradSoftmax_();   break;
-        case OperationType::LossSrc:   EvalGradLossSrc_();   break;
-        case OperationType::AddVector: EvalGradAddVector_(); break;
-        case OperationType::LossRef:   /* Not needed */      break;
+        case OperationType::Add:                 EvalGradAddMatrixLSubAdd_();    break;
+        case OperationType::LMul:                EvalGradLMul_();                break;
+        case OperationType::RMul:                EvalGradRMul_();                break;
+        case OperationType::Sigm:                EvalGradSigm_();                break;
+        case OperationType::Softmax:             EvalGradSoftmax_();             break;
+        case OperationType::SquaredErrorLossSrc: EvalGradSquaredErrorLossSrc_(); break;
+        case OperationType::AddVector:           EvalGradAddVector_();           break;
+        case OperationType::SquaredErrorLossRef: /* Not needed */                break;
         case OperationType::None:
         default:
             assert(0);
@@ -434,17 +431,20 @@ void SmartMatrix::EvalGradRecursive_() {
     if (child2_) { child2_->EvalGradRecursive_(); }
 }
 
+
 void SmartMatrix::EvalGradRSub_() {
     for (std::size_t i = 0; i < n_elems_; i++) {
         grads_[i] += -parent_->grads_[i];
     }
 }
 
+
 void SmartMatrix::EvalGradAddMatrixLSubAdd_() {
     for (std::size_t i = 0; i < n_elems_; i++) {
         grads_[i] += parent_->grads_[i];
     }
 }
+
 
 void SmartMatrix::EvalGradLMul_() {
     std::size_t N = n_rows_;
@@ -457,6 +457,7 @@ void SmartMatrix::EvalGradLMul_() {
     Chubarov_EvalGradLMul(N, M, L, grads, sibling_values, parent_grads);
 }
 
+
 void SmartMatrix::EvalGradRMul_() {
     std::size_t N = parent_->GetRows();
     std::size_t M = n_cols_;
@@ -468,12 +469,14 @@ void SmartMatrix::EvalGradRMul_() {
     Chubarov_EvalGradRMul(N, M, L, grads, sibling_values, parent_grads);
 }
 
+
 void SmartMatrix::EvalGradSigm_() {
     for (std::size_t i = 0; i < n_elems_; i++) {
         float local_grad = parent_->values_[i] * (1 - parent_->values_[i]);
         grads_[i] += parent_->grads_[i] * local_grad;
     }
 }
+
 
 // dS_i/dA_j = S_i ((i == j) - S_j)
 void SmartMatrix::EvalGradSoftmax_() {
@@ -491,12 +494,14 @@ void SmartMatrix::EvalGradSoftmax_() {
     }
 }
 
-void SmartMatrix::EvalGradLossSrc_() {
+
+void SmartMatrix::EvalGradSquaredErrorLossSrc_() {
     for (std::size_t i = 0; i < n_elems_; i++) {
         float local_grad = 2 * (values_[i] - sibling_->values_[i]);
         grads_[i] += parent_->grads_[0] * local_grad;
     }
 }
+
 
 void SmartMatrix::EvalGradAddVector_() {
     for (std::size_t i = 0; i < n_cols_; i++) {
@@ -538,15 +543,15 @@ void SmartMatrix::DumpRecursive_(bool isSibling, std::ofstream& out) const {
         switch(parent_oper_) {
             case OperationType::AddMatrix:
             case OperationType::AddVector:
-            case OperationType::Add:        op_str = "+";       break;
+            case OperationType::Add:                 op_str = "+";       break;
             case OperationType::RMul:
-            case OperationType::LMul:       op_str = "*";       break;
+            case OperationType::LMul:                op_str = "*";       break;
             case OperationType::RSub:
-            case OperationType::LSub:       op_str = "-";       break;
-            case OperationType::Sigm:       op_str = "sigm";    break;
-            case OperationType::Softmax:    op_str = "softmax"; break;
-            case OperationType::LossSrc:
-            case OperationType::LossRef:    op_str = "loss";    break;
+            case OperationType::LSub:                op_str = "-";       break;
+            case OperationType::Sigm:                op_str = "sigm";    break;
+            case OperationType::Softmax:             op_str = "softmax"; break;
+            case OperationType::SquaredErrorLossSrc:
+            case OperationType::SquaredErrorLossRef: op_str = "loss";    break;
 
             case OperationType::None:
             default:

@@ -15,13 +15,13 @@ class SmartMatrix {
         SmartMatrix& operator=(SmartMatrix&& other);
         ~SmartMatrix();
 
-        void Add               (SmartMatrix* first,  SmartMatrix* second);
-        void AddVectorToMatrix (SmartMatrix* matrix, SmartMatrix* vector);
-        void Sub               (SmartMatrix* first,  SmartMatrix* second);
-        void Mul               (SmartMatrix* first,  SmartMatrix* second);
-        void Loss              (SmartMatrix* src,    SmartMatrix* ref);
-        void Sigm              (SmartMatrix* first);
-        void Softmax           (SmartMatrix* matrix);
+        void Add              (SmartMatrix* first,  SmartMatrix* second);
+        void AddVectorToMatrix(SmartMatrix* matrix, SmartMatrix* vector);
+        void Sub              (SmartMatrix* first,  SmartMatrix* second);
+        void Mul              (SmartMatrix* first,  SmartMatrix* second);
+        void SquaredErrorLoss (SmartMatrix* src,    SmartMatrix* ref);
+        void Sigm             (SmartMatrix* first);
+        void Softmax          (SmartMatrix* matrix);
 
         float GetValue(std::size_t row, std::size_t col) const;
         float GetGrad (std::size_t row, std::size_t col) const;
@@ -56,8 +56,8 @@ class SmartMatrix {
             RMul,
             Sigm,
             Softmax,
-            LossSrc,
-            LossRef,
+            SquaredErrorLossSrc,
+            SquaredErrorLossRef,
         };
 
         float* values_;
@@ -87,7 +87,7 @@ class SmartMatrix {
         void EvalGradRMul_();
         void EvalGradSigm_();
         void EvalGradSoftmax_();
-        void EvalGradLossSrc_();
+        void EvalGradSquaredErrorLossSrc_();
         void EvalGradAddVector_();
 };
 
