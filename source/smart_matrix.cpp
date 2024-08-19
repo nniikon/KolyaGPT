@@ -245,7 +245,27 @@ void SmartMatrix::SquaredErrorLoss(SmartMatrix* src, SmartMatrix* ref) {
 }
 
 
-void SmartMatrix::AddVectorToMatrix (SmartMatrix* matrix, SmartMatrix* vector) {
+void SmartMatrix::CrossEntropyLoss(SmartMatrix* src, SmartMatrix* ref) {
+    // FIXME: throw if matrices are differently sized
+
+    assert(src->GetRows() == ref->GetRows());
+    assert(src->GetCols() == ref->GetCols());
+    assert(n_elems_ == 1);
+
+    float loss = 0.0f;
+
+    for (std::size_t i = 0; i < src->n_elems_; i++) {
+        loss -= ref->values_[i] * logf(src->values_[i] + crossEntropyLossEpsilon);
+    }
+    loss /= static_cast<float>(src->n_elems_);
+    values_[0] = loss;
+
+    SetBinaryFamily(src, ref, OperationType::CrossEntropyLossSrc,
+                              OperationType::CrossEntropyLossRef);
+}
+
+
+void SmartMatrix::AddVectorToMatrix(SmartMatrix* matrix, SmartMatrix* vector) {
     assert(n_rows_ == matrix->GetRows());
     assert(n_cols_ == matrix->GetCols());
     assert(matrix->GetCols() == vector->GetCols());
@@ -411,7 +431,7 @@ void SmartMatrix::EvalGradRecursive_() {
     assert(parent_ != nullptr);
 
     switch(parent_oper_) {
-        case OperationType::RSub:                EvalGradRSub_(); break;
+        case OperationType::RSub:                EvalGradRSub_();                break;
         case OperationType::AddMatrix:
         case OperationType::LSub:
         case OperationType::Add:                 EvalGradAddMatrixLSubAdd_();    break;
@@ -420,8 +440,10 @@ void SmartMatrix::EvalGradRecursive_() {
         case OperationType::Sigm:                EvalGradSigm_();                break;
         case OperationType::Softmax:             EvalGradSoftmax_();             break;
         case OperationType::SquaredErrorLossSrc: EvalGradSquaredErrorLossSrc_(); break;
+        case OperationType::CrossEntropyLossSrc: EvalGradCrossEntropyLossSrc_(); break;
         case OperationType::AddVector:           EvalGradAddVector_();           break;
         case OperationType::SquaredErrorLossRef: /* Not needed */                break;
+        case OperationType::CrossEntropyLossRef: /* Not needed */                break;
         case OperationType::None:
         default:
             assert(0);
@@ -503,6 +525,15 @@ void SmartMatrix::EvalGradSquaredErrorLossSrc_() {
 }
 
 
+void SmartMatrix::EvalGradCrossEntropyLossSrc_() {
+    for (std::size_t i = 0; i < n_elems_; i++) {
+        float local_grad = -(sibling_->values_[i] / (values_[i] + crossEntropyLossEpsilon));
+
+        grads_[i] += parent_->grads_[0] * local_grad;
+    }
+}
+
+
 void SmartMatrix::EvalGradAddVector_() {
     for (std::size_t i = 0; i < n_cols_; i++) {
         for (std::size_t j = 0; j < parent_->n_rows_; j++) {
@@ -552,6 +583,8 @@ void SmartMatrix::DumpRecursive_(bool isSibling, std::ofstream& out) const {
             case OperationType::Softmax:             op_str = "softmax"; break;
             case OperationType::SquaredErrorLossSrc:
             case OperationType::SquaredErrorLossRef: op_str = "loss";    break;
+            case OperationType::CrossEntropyLossSrc:
+            case OperationType::CrossEntropyLossRef: op_str = "loss";    break;
 
             case OperationType::None:
             default:
