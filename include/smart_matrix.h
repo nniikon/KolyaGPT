@@ -20,6 +20,7 @@ class SmartMatrix {
         void Sub              (SmartMatrix* first,  SmartMatrix* second);
         void Mul              (SmartMatrix* first,  SmartMatrix* second);
         void SquaredErrorLoss (SmartMatrix* src,    SmartMatrix* ref);
+        void CrossEntropyLoss (SmartMatrix* src,    SmartMatrix* ref);
         void Sigm             (SmartMatrix* first);
         void Softmax          (SmartMatrix* matrix);
 
@@ -58,6 +59,8 @@ class SmartMatrix {
             Softmax,
             SquaredErrorLossSrc,
             SquaredErrorLossRef,
+            CrossEntropyLossSrc,
+            CrossEntropyLossRef,
         };
 
         float* values_;
@@ -88,6 +91,7 @@ class SmartMatrix {
         void EvalGradSigm_();
         void EvalGradSoftmax_();
         void EvalGradSquaredErrorLossSrc_();
+        void EvalGradCrossEntropyLossSrc_();
         void EvalGradAddVector_();
 };
 

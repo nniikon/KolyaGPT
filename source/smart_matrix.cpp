@@ -245,6 +245,27 @@ void SmartMatrix::SquaredErrorLoss(SmartMatrix* src, SmartMatrix* ref) {
 }
 
 
+void SmartMatrix::CrossEntropyLoss(SmartMatrix* src, SmartMatrix* ref) {
+    // FIXME: throw if matrices are differently sized
+
+    assert(src->GetRows() == ref->GetRows());
+    assert(src->GetCols() == ref->GetCols());
+    assert(n_elems_ == 1);
+
+    float loss = 0.0f;
+    const float epsilon = 1e-10;  // Small value to avoid log(0)
+
+    for (std::size_t i = 0; i < src->n_elems_; i++) {
+        loss -= ref->values_[i] * log(src->values_[i] + epsilon);
+    }
+    loss /= static_cast<float>(src->n_elems_);
+    values_[0] = loss;
+
+    SetBinaryFamily(src, ref, OperationType::SquaredErrorLossSrc,
+                              OperationType::SquaredErrorLossRef);
+}
+
+
 void SmartMatrix::AddVectorToMatrix (SmartMatrix* matrix, SmartMatrix* vector) {
     assert(n_rows_ == matrix->GetRows());
     assert(n_cols_ == matrix->GetCols());
@@ -411,7 +432,7 @@ void SmartMatrix::EvalGradRecursive_() {
     assert(parent_ != nullptr);
 
     switch(parent_oper_) {
-        case OperationType::RSub:                EvalGradRSub_(); break;
+        case OperationType::RSub:                EvalGradRSub_();                break;
         case OperationType::AddMatrix:
         case OperationType::LSub:
         case OperationType::Add:                 EvalGradAddMatrixLSubAdd_();    break;
@@ -498,6 +519,17 @@ void SmartMatrix::EvalGradSoftmax_() {
 void SmartMatrix::EvalGradSquaredErrorLossSrc_() {
     for (std::size_t i = 0; i < n_elems_; i++) {
         float local_grad = 2 * (values_[i] - sibling_->values_[i]);
+        grads_[i] += parent_->grads_[0] * local_grad;
+    }
+}
+
+
+void SmartMatrix::EvalGradCrossEntropyLossSrc_() {
+    const float epsilon = 1e-10;  // To avoid division by zero
+
+    for (std::size_t i = 0; i < n_elems_; i++) {
+        float local_grad = -(sibling_->values_[i] / (values_[i] + epsilon));
+
         grads_[i] += parent_->grads_[0] * local_grad;
     }
 }
