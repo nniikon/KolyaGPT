@@ -93,6 +93,8 @@ class SmartMatrix {
         void EvalGradSquaredErrorLossSrc_();
         void EvalGradCrossEntropyLossSrc_();
         void EvalGradAddVector_();
+
+        const float crossEntropyLossEpsilon = 1e-10f;
 };
 
 #endif // SMART_MATRIX_H_
