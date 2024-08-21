@@ -40,9 +40,9 @@ class Mnist {
         const std::size_t n_hidden_layer_neurons_;
         const std::size_t n_output_neurons_       = 10;
 
-        std::unique_ptr<InputLayer>  input_layer_;
-        std::vector<MiddleLayer>     middle_layers_;
-        std::unique_ptr<OutputLayer> output_layer_;
+        std::unique_ptr<InputLayer>         input_layer_;
+        std::vector<MiddleLayer>            middle_layers_;
+        std::unique_ptr<OutputLayerDiscret> output_layer_;
 
         SmartMatrix  input_test_vector_;
         SmartMatrix  output_test_vector_;
