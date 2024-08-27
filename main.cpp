@@ -191,7 +191,7 @@ void TrainMnist() {
     // output_layer.EvalRecursive();
 
     bool isSaving = false;
-    const float kStep = 0.00005;
+    const float kStep = 0.00005f;
     const std::size_t kIterations = 1'000'000;
     for (std::size_t i = 0; i < kIterations; i++) {
         output_layer.ResetGradsRecursive();
