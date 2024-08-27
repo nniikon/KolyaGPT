@@ -99,15 +99,14 @@ class OutputLayer : public MiddleLayer {
         OutputLayer(Layer* input_layer, std::size_t n_outputs);
         ~OutputLayer();
 
-        OutputLayer(const OutputLayer& other);
-        OutputLayer& operator=(const OutputLayer& other);
-        OutputLayer(OutputLayer&& other);
-        OutputLayer& operator=(OutputLayer&& other);
+        OutputLayer           (const OutputLayer&  other);
+        OutputLayer& operator=(const OutputLayer&  other);
+        OutputLayer                 (OutputLayer&& other);
+        OutputLayer& operator=      (OutputLayer&& other);
 
         float GetLoss() const;
-        float EvalLoss();
+        virtual float EvalLoss() = 0;
         void Dump();
-        void Eval() override;
         void ResetGrads() override;
         float GetNormOutput(std::size_t example, std::size_t output);
         float GetProbOutput(std::size_t example, std::size_t output);
@@ -119,9 +118,37 @@ class OutputLayer : public MiddleLayer {
         void ResetGradsRecursive()              override;
         void BackpropagateRecursive(float step) override;
 
-    private:
+    protected:
         SmartMatrix loss_;
         SmartMatrix expected_output_;
+};
+
+class OutputLayerDiscret : public OutputLayer {
+    public:
+        OutputLayerDiscret(Layer* input_layer, std::size_t n_outputs);
+        ~OutputLayerDiscret();
+
+        OutputLayerDiscret           (const OutputLayerDiscret&  other);
+        OutputLayerDiscret& operator=(const OutputLayerDiscret&  other);
+        OutputLayerDiscret                 (OutputLayerDiscret&& other);
+        OutputLayerDiscret& operator=      (OutputLayerDiscret&& other);
+
+        void  Eval()     override;
+        float EvalLoss() override;
+};
+
+class OutputLayerContinuos : public OutputLayer {
+    public:
+        OutputLayerContinuos(Layer* input_layer, std::size_t n_outputs);
+        ~OutputLayerContinuos();
+
+        OutputLayerContinuos           (const OutputLayerContinuos&  other);
+        OutputLayerContinuos& operator=(const OutputLayerContinuos&  other);
+        OutputLayerContinuos                 (OutputLayerContinuos&& other);
+        OutputLayerContinuos& operator=      (OutputLayerContinuos&& other);
+
+        void  Eval()     override;
+        float EvalLoss() override;
 };
 
 #endif

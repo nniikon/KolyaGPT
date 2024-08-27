@@ -16,7 +16,7 @@ void TestMnistLib();
 void TrainMnist();
 
 int main() {
-    TestMLP();
+    TrainMnist();
 }
 
 
@@ -80,7 +80,7 @@ void TestMLP() {
     InputLayer   input_layer (kInputNeurons,  kExamples);
     MiddleLayer middle_layer1(&input_layer,   kMiddleNeurons);
     MiddleLayer middle_layer2(&middle_layer1, kMiddleNeurons);
-    OutputLayer output_layer (&middle_layer2, kOutputNeurons);
+    OutputLayerDiscret output_layer (&middle_layer2, kOutputNeurons);
 
     for (std::size_t i = 0; i < kExamples; i++) {
         for (std::size_t j = 0; j < kInputNeurons; j++) {
@@ -95,7 +95,7 @@ void TestMLP() {
     middle_layer2.SetNormalRand();
     output_layer.SetNormalRand();
 
-    const float kStep = 0.0001f;
+    const float kStep = 0.01f;
     const std::size_t kIterations = 1000000;
     for (std::size_t i = 0; i < kIterations; i++) {
         input_layer  .ResetGrads();
@@ -154,7 +154,7 @@ void TrainMnist() {
     assert(mnist_labels.n_labels == mnist_images.n_images);
 
     // const std::size_t kExamples      = static_cast<std::size_t>(mnist_labels.n_labels);
-    const std::size_t kExamples      = 2'0;
+    const std::size_t kExamples      = 1'000;
     const std::size_t kInputNeurons  = mnist_images.n_cols * mnist_images.n_rows;
     const std::size_t kMiddleNeurons = 16;
     const std::size_t kOutputNeurons = 10;
@@ -162,7 +162,7 @@ void TrainMnist() {
     InputLayer   input_layer (kInputNeurons,  kExamples);
     MiddleLayer middle_layer1(&input_layer,   kMiddleNeurons);
     MiddleLayer middle_layer2(&middle_layer1, kMiddleNeurons);
-    OutputLayer output_layer (&middle_layer2, kOutputNeurons);
+    OutputLayerDiscret output_layer (&middle_layer2, kOutputNeurons);
 
     for (std::size_t example = 0; example < kExamples; example++) {
         for (std::size_t neuron = 0; neuron < kInputNeurons; neuron++) {
@@ -191,7 +191,7 @@ void TrainMnist() {
     // output_layer.EvalRecursive();
 
     bool isSaving = false;
-    const float kStep = 200;
+    const float kStep = 0.00005f;
     const std::size_t kIterations = 1'000'000;
     for (std::size_t i = 0; i < kIterations; i++) {
         output_layer.ResetGradsRecursive();

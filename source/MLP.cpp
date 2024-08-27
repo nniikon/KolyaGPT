@@ -1,5 +1,6 @@
 #include "../include/MLP.h"
 
+#include <cmath>
 #include <iostream>
 #include <assert.h>
 
@@ -368,22 +369,6 @@ float OutputLayer::GetExpectedValue(std::size_t example, std::size_t output) {
 }
 
 
-void OutputLayer::Eval() {
-    unbiased_output_.Mul(input_layer_->GetOutput(), &weights_);
-    output_.AddVectorToMatrix(&unbiased_output_, &biases_);
-    norm_output_.Softmax(&output_);
-}
-
-
-float OutputLayer::EvalLoss() {
-    Eval();
-    loss_.CrossEntropyLoss(&norm_output_, &expected_output_);
-    loss_.EvalGrad();
-
-    return loss_.GetValue(0, 0);
-}
-
-
 void OutputLayer::Dump() {
     loss_.Dump();
 }
@@ -401,6 +386,7 @@ void OutputLayer::ResetGrads() {
 
 
 float OutputLayer::GetLoss() const { return loss_.GetValue(0, 0); }
+
 
 float OutputLayer::GetNormOutput(std::size_t example, std::size_t output) {
     return norm_output_.GetValue(example, output);
@@ -428,4 +414,88 @@ void OutputLayer::BackpropagateRecursive(float step) {
 
     input_layer_->BackpropagateRecursive(step);
     Backpropagate(step);
+}
+
+//================================ OutputLayer* ================================
+
+OutputLayerDiscret::OutputLayerDiscret(Layer* input_layer, std::size_t n_outputs)
+    : OutputLayer(input_layer, n_outputs) {}
+
+OutputLayerDiscret::~OutputLayerDiscret() {}
+
+OutputLayerDiscret::OutputLayerDiscret(const OutputLayerDiscret& other)
+    : OutputLayer(other) {}
+
+OutputLayerDiscret& OutputLayerDiscret::operator=(const OutputLayerDiscret& other) {
+    if (this == &other) return *this;
+
+    OutputLayer::operator=(other);
+
+    return *this;
+}
+
+OutputLayerDiscret::OutputLayerDiscret(OutputLayerDiscret&& other)
+    : OutputLayer(other) {}
+
+OutputLayerDiscret& OutputLayerDiscret::operator=(OutputLayerDiscret&& other) {
+    if (this == &other) return *this;
+
+    OutputLayer::operator=(other);
+
+    return *this;
+}
+
+OutputLayerContinuos::OutputLayerContinuos(Layer* input_layer, std::size_t n_outputs)
+    : OutputLayer(input_layer, n_outputs) {}
+
+OutputLayerContinuos::~OutputLayerContinuos() {}
+
+OutputLayerContinuos::OutputLayerContinuos(const OutputLayerContinuos& other)
+    : OutputLayer(other) {}
+
+OutputLayerContinuos& OutputLayerContinuos::operator=(const OutputLayerContinuos& other) {
+    if (this == &other) return *this;
+
+    OutputLayer::operator=(other);
+
+    return *this;
+}
+
+OutputLayerContinuos::OutputLayerContinuos(OutputLayerContinuos&& other)
+    : OutputLayer(other) {}
+
+OutputLayerContinuos& OutputLayerContinuos::operator=(OutputLayerContinuos&& other) {
+    if (this == &other) return *this;
+
+    OutputLayer::operator=(other);
+
+    return *this;
+}
+
+void OutputLayerDiscret::Eval() {
+    unbiased_output_.Mul(input_layer_->GetOutput(), &weights_);
+    output_.AddVectorToMatrix(&unbiased_output_, &biases_);
+    norm_output_.Softmax(&output_);
+}
+
+float OutputLayerDiscret::EvalLoss() {
+    Eval();
+    loss_.CrossEntropyLoss(&norm_output_, &expected_output_);
+    loss_.EvalGrad();
+
+    return loss_.GetValue(0, 0);
+}
+
+void OutputLayerContinuos::Eval() {
+    unbiased_output_.Mul(input_layer_->GetOutput(), &weights_);
+    output_.AddVectorToMatrix(&unbiased_output_, &biases_);
+    norm_output_.Sigm(&output_);
+}
+
+float OutputLayerContinuos::EvalLoss() {
+    Eval();
+    loss_.SquaredErrorLoss(&norm_output_, &expected_output_);
+    loss_.EvalGrad();
+
+    return loss_.GetValue(0, 0);
 }

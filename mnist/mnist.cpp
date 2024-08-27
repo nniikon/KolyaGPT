@@ -41,7 +41,7 @@ Mnist::Mnist(const char* train_images_path,
         middle_layers_.emplace_back(MiddleLayer(&middle_layers_[i - 1], n_hidden_layer_neurons_));
     }
 
-    output_layer_ = std::make_unique<OutputLayer>(&middle_layers_[n_hidden_layers_ - 1], n_output_neurons_);
+    output_layer_ = std::make_unique<OutputLayerDiscret>(&middle_layers_[n_hidden_layers_ - 1], n_output_neurons_);
 
     // Dump();
 
